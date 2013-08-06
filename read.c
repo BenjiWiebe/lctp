@@ -76,13 +76,12 @@ int main(int argc, char *argv[])
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'v'}
 	};
-	int c;
 	int opti;
 	char *sstart = NULL, *send = NULL;
 
 	while(1)
 	{
-		c = getopt_long(argc, argv, "s:e:hv", long_options, &opti);
+		int c = getopt_long(argc, argv, "s:e:hv", long_options, &opti);
 		if(c == -1)
 		{
 			break;
@@ -186,7 +185,6 @@ int main(int argc, char *argv[])
 	int cmnt = 0;
 	int lineno = 0;
 	time_t utm;
-	int linei = 0;
 	char sio[4], scmnt[5], sdatetime[16];
 	time_t last_time = 0;
 	float totaltime = 0.0;
@@ -197,7 +195,7 @@ int main(int argc, char *argv[])
 	{
 		lineno++;
 
-		linei = strlen(line) - 1;
+		int linei = strlen(line) - 1;
 		if(linei != 29)
 		{
 			formaterr(lineno);
