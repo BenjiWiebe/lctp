@@ -21,13 +21,12 @@
 #define check(x)		if(!(x))formaterr(lineno)
 #define formaterr(x)	_formaterr(__FILE__,__LINE__,x)
 
-char *basictime(time_t *t)
+char *basicdate(time_t *t)
 {
-	char *ret = asctime(localtime(t));
-	char *n = &ret[strlen(ret) - 1];
-	if(*n == '\n')
-		*n = 0;
-	return ret;
+	char *tmp = malloc(11);
+	struct tm *s = localtime(t);
+	strftime(tmp, 11, "%F", s);
+	return tmp;
 }
 
 void usage(char *progname, int ret)
@@ -319,8 +318,9 @@ int main(int argc, char *argv[])
 				to_add = utm - last_time;
 				if(to_add > (12 * 60 * 60))
 				{
-					printf("%s:%d: ***WARNING*** Employee logged in for more than 12 hours (%.2f hours): IN at '%s', OUT at '%s'.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, basictime(&last_time), basictime(&utm));
-					printf("to_add = %ju\n",to_add);
+					char *tmp = basicdate(&utm);
+					printf("%s:%d: ***WARNING*** Employee logged in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
+					free(tmp);
 				}
 				totaltime += ((float)to_add) / 60 / 60;
 			}
