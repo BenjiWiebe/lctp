@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
 	time_t last_time = 0;
 	float totaltime = 0.0;
 	IO iocur = 0, iolast = 0;
+	time_t now = time(NULL);
 
 	while(getline(&line, &len, fp) != -1)
 	{
@@ -308,6 +309,10 @@ int main(int argc, char *argv[])
 
 		// make sure the entries are in the right order
 		if(utm < last_time)
+			formaterr(lineno);
+
+		// entries must not be in the future
+		if(utm > now)
 			formaterr(lineno);
 
 		time_t to_add;
