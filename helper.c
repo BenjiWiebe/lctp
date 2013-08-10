@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	int s = strlen(argv[1]) + 40;
 	prog = malloc(s);
 	if(prog == NULL)err("malloc");
-	snprintf(prog, s-1, "./lctp -s %10s -e %10s %s", ebuf, sbuf, argv[1]);
+	snprintf(prog, s-1, "lctp -s %10s -e %10s %s", ebuf, sbuf, argv[1]);
 	FILE *p = popen(prog, "r");
 	if(p == NULL)err("malloc");
 	char *line = NULL;
