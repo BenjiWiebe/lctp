@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	char *line = NULL;
 	int cmnt = 0;
 	int lineno = 0;
-	time_t utm;
+	time_t utm, utmlast;
 	char sio[4], scmnt[5], sdatetime[16];
 	time_t last_time = 0;
 	float totaltime = 0.0;
@@ -305,6 +305,14 @@ int main(int argc, char *argv[])
 
 		utm = parse_datetime(sdatetime, '-', ':');
 
+		// if an OUT is followed closely by an IN, warn.
+		if((utm - utmlast) <= (5*60))
+		{
+			char *tmp = basicdate(&utm);
+			printf("%s:%d: ***WARNING*** Employee clocked in shortly after clocking out on %s.\n", argv[optind], lineno, tmp);
+			free(tmp);
+		}
+
 		// make sure the entries are in the right order
 		if(utm < last_time)
 			formaterr(lineno);
@@ -322,7 +330,7 @@ int main(int argc, char *argv[])
 				if(to_add > (12 * 60 * 60))
 				{
 					char *tmp = basicdate(&utm);
-					printf("%s:%d: ***WARNING*** Employee logged in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
+					printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
 					free(tmp);
 				}
 				totaltime += ((float)to_add) / 60 / 60;
@@ -335,6 +343,7 @@ int main(int argc, char *argv[])
 		}
 
 		iolast = iocur;
+		utmlast = utm;
 	}
 	printf("Total time: %.2f hours.\n", totaltime);
 
