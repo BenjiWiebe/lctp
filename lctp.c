@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if((sstart && (!send)) || (send && (!sstart)))
+	if(!sstart != !send)
 	{
 		fprintf(stderr, "Arguments --end/-e and --start/-s must be used together.\n");
 		if(sstart)
@@ -146,22 +146,20 @@ int main(int argc, char *argv[])
 		free(send);
 
 		if(start == FMT_ERR)
-		{
 			apperr("Arguments to --end/-e and --start/-s must be in the format mm-dd-yyyy.\n");
-		}
+
 		if(end == FMT_ERR)
-		{
 			apperr("Arguments to --end/-e and --start/-s must be in the format mm-dd-yyyy.\n");
-		}
+
 		if(start > end)
-		{
 			apperr("End date must be larger than or equal to the start date.");
-		}
 	}
 	else
 	{
 		start = 0;
 		end = parse_date("01-01-2500", '-'); /* 01 Jan 2500 00:00:00 GMT */
+		if(end == FMT_ERR)
+			apperr("OOPS\n");
 	}
 
 	if(optind != (argc - 1))
@@ -176,10 +174,10 @@ int main(int argc, char *argv[])
 	}
 	size_t len = 0;
 
-	if(fseek(fp, 0, SEEK_SET) < 0)
+/*	if(fseek(fp, 0, SEEK_SET) < 0)
 	{
 		err("fseek");
-	}
+	}*/
 
 	char *line = NULL;
 	int cmnt = 0;
@@ -196,11 +194,6 @@ int main(int argc, char *argv[])
 		lineno++;
 
 		int linei = strlen(line) - 1;
-		if(linei != 29)
-		{
-			formaterr(lineno);
-		}
-
 		while(linei--)
 		{
 			switch(linei)
@@ -260,7 +253,7 @@ int main(int argc, char *argv[])
 					check(line[linei] == '\n');
 					break;
 				default:
-					apperr("***ERROR*** Unknown error.\n");
+					formaterr(lineno);
 			}
 		}
 
