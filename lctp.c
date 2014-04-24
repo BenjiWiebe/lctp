@@ -156,10 +156,8 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		start = 0;
-		end = parse_date("01-01-2500", '-'); /* 01 Jan 2500 00:00:00 GMT */
-		if(end == FMT_ERR)
-			apperr("OOPS\n");
+		start = -1;
+		end = -1;
 	}
 
 	if(optind != (argc - 1))
@@ -315,23 +313,24 @@ int main(int argc, char *argv[])
 			formaterr(lineno);
 
 		time_t to_add;
-		if(utm >= start && utm <= (end + (24 * 60 * 60 - 1)))
+		if(utm >= start || start == -1)
 		{
-			if(iocur == OUT)   // if we are processing an OUT, calculate the time
+			if((utm <= (end + (24 * 60 * 60 - 1))) || end == -1)
 			{
-				to_add = utm - last_time;
-				if(to_add > (12 * 60 * 60))
+				if(iocur == OUT)   // if we are processing an OUT, calculate the time
 				{
-					char *tmp = basicdate(&utm);
-					printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
-					free(tmp);
+					to_add = utm - last_time;
+					if(to_add > (12 * 60 * 60))
+					{
+						char *tmp = basicdate(&utm);
+						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
+						free(tmp);
+					}
+					totaltime += ((float)to_add) / 60 / 60;
 				}
-				totaltime += ((float)to_add) / 60 / 60;
-			}
-
-			if(iocur == IN)
-			{
-				last_time = utm;
+	
+				if(iocur == IN)
+					last_time = utm;
 			}
 		}
 
