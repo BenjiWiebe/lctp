@@ -13,72 +13,40 @@
 
 time_t parse_date(char *str, char sep)
 {
-	/* format (assuming sep == '-'): mm-dd-yyyy */
-	int i = strlen(str);
+	/* format (x is _sep_): mmxddxyyyy */
 
-	if(i != 10)
-	{
+	if(strlen(str) != 10)
 		return FMT_ERR;
-	}
 
 	char syear[5];
 	char smonth[3];
 	char sday[3];
-
-	syear[4] = 0;
-	smonth[2] = 0;
-	sday[2] = 0;
-
 	int year = 0, month = 0, day = 0;
 
-	while(i--)
-	{
-		switch(i)
-		{
-			case 0:
-			case 1:
-				smonth[i] = str[i];
-				break;
-			case 3:
-			case 4:
-				sday[i - 3] = str[i];
-				break;
-			case 2:
-			case 5:
-				if(str[i] != sep)
-				{
-					return FMT_ERR;
-				}
-				break;
-			case 6:
-			case 7:
-			case 8:
-			case 9:
-				syear[i - 6] = str[i];
-				break;
-			default:
-				return FMT_ERR;
-				break;
-		}
-	}
-
+	strncpy(smonth, str, 2);
+	smonth[2] = 0;
 	satio(month, 12, 1);
+
+	strncpy(sday, str+3, 2);
+	sday[2] = 0;
 	satio(day, 31, 1);
+
+	strncpy(syear, str+6, 4);
+	syear[4] = 0;
 	satio(year, 3000, 1900);
 
-	struct tm *utm = malloc(sizeof(struct tm));
-	memset(utm, 0, sizeof(struct tm));
+	if((str[2] != sep) || (str[5] != sep))
+		return FMT_ERR;
 
+	struct tm *utm = calloc(1, sizeof(struct tm));
 	utm->tm_mday = day;
 	utm->tm_mon = month - 1;
 	utm->tm_year = year - 1900;
 
 	time_t t = mktime(utm);
 	free(utm);
-	if(!(t > 0))
-	{
+	if(t == -1)
 		return FMT_ERR;
-	}
 	return t;
 }
 
