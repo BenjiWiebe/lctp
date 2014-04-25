@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 		printf("%s",line);
 	}
 	pclose(p);
+	free(prog);
 	free(sbuf);
 	free(ebuf);
 	return 0;
