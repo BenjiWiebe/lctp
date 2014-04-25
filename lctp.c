@@ -115,13 +115,14 @@ int main(int argc, char *argv[])
 
 	if(!sstart != !send)
 	{
-		fprintf(stderr, "Arguments --end/-e and --start/-s must be used together.\n");
 		if(sstart)
 		{
+			apperr("End-date is also needed.\n");
 			free(sstart);
 		}
 		if(send)
 		{
+			apperr("Start-date is also needed.\n");
 			free(send);
 		}
 		usage(argv[0], 1);
@@ -137,11 +138,8 @@ int main(int argc, char *argv[])
 		free(sstart);
 		free(send);
 
-		if(start == FMT_ERR)
-			apperr("Arguments to --end/-e and --start/-s must be in the format mm-dd-yyyy.\n");
-
-		if(end == FMT_ERR)
-			apperr("Arguments to --end/-e and --start/-s must be in the format mm-dd-yyyy.\n");
+		if(start == FMT_ERR || end == FMT_ERR)
+			apperr("Start-date and end-date must be in the format mm-dd-yyyy.\n");
 
 		if(start > end)
 			apperr("End date must be larger than or equal to the start date.");
