@@ -12,6 +12,7 @@ extern "C" {
 
 time_t parse_date(char*,char);
 time_t parse_datetime(char*,char,char);
+char *basicdate(time_t*);
 
 #ifdef __cplusplus
 }

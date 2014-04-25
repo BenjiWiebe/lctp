@@ -21,14 +21,6 @@
 #define check(x)		if(!(x))formaterr(lineno)
 #define formaterr(x)	_formaterr(__FILE__,__LINE__,x)
 
-char *basicdate(time_t *t)
-{
-	char *tmp = malloc(11);
-	struct tm *s = localtime(t);
-	strftime(tmp, 11, "%F", s);
-	return tmp;
-}
-
 void usage(char *progname, int ret)
 {
 	printf("Usage: %s [OPTIONS] FILE\n", progname);

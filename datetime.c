@@ -142,3 +142,11 @@ time_t parse_datetime(char *str, char dsep, char tsep)
 	}
 	return t;
 }
+
+char *basicdate(time_t *t)
+{
+	char *tmp = malloc(11);
+	struct tm *s = localtime(t);
+	strftime(tmp, 11, "%m-%d-%Y", s);
+	return tmp;
+}
