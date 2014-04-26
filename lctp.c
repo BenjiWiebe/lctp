@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 	char sio[4], scmnt[5], sdatetime[16];
 	time_t last_time = 0;
 	float totaltime = 0.0;
-	IO iocur = 0, iolast = 0;
+	IO iocur = NIL, iolast = NIL;
 	time_t now = time(NULL);
 
 	while(getline(&line, &len, fp) != -1)
@@ -278,8 +278,8 @@ int main(int argc, char *argv[])
 
 		utm = parse_datetime(sdatetime, '-', ':');
 
-		// if an OUT is followed closely by an IN, warn.
-		if((utm - utmlast) <= (5*60))
+		// if an OUT is followed closely by an IN, warn. But don't warn if this is the first time ever clocking in
+		if((utm - utmlast) <= (5*60) && iolast != NIL)
 		{
 			char *tmp = basicdate(&utm);
 			printf("%s:%d: ***WARNING*** Employee clocked in shortly after clocking out on %s.\n", argv[optind], lineno, tmp);
