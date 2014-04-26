@@ -162,12 +162,6 @@ int main(int argc, char *argv[])
 		err("fopen");
 	}
 	size_t len = 0;
-
-/*	if(fseek(fp, 0, SEEK_SET) < 0)
-	{
-		err("fseek");
-	}*/
-
 	char *line = NULL;
 	int cmnt = 0;
 	int lineno = 0;
