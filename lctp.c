@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <getopt.h>
+#include "chomp.h"
 #include "datetime.h"
 
 #define satio(str, max, min)	errno = 0; \
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
 	while(getline(&line, &len, fp) != -1)
 	{
 		lineno++;
-
+		line = chomp(line);
 		int linei = strlen(line) - 1;
 		while(linei--)
 		{
@@ -236,9 +237,6 @@ int main(int argc, char *argv[])
 				case 27:
 				case 28:
 					sdatetime[linei - 27 + 13] = line[linei];
-					break;
-				case 29:
-					check(line[linei] == '\n');
 					break;
 				default:
 					formaterr(lineno);
