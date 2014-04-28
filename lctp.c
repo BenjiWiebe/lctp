@@ -82,33 +82,15 @@ int main(int argc, char *argv[])
 		switch(c)
 		{
 			case 's':
-				sstart = malloc(strlen(optarg) + 1);
-				strcpy(sstart, optarg);
+				sstart = optarg;
 				break;
 			case 'e':
-				send = malloc(strlen(optarg) + 1);
-				strcpy(send, optarg);
+				send = optarg;
 				break;
 			case 'h':
-				if(sstart)
-				{
-					free(sstart);
-				}
-				if(send)
-				{
-					free(send);
-				}
 				usage(argv[0], 0);
 				break;
 			case 'v':
-				if(sstart)
-				{
-					free(sstart);
-				}
-				if(send)
-				{
-					free(send);
-				}
 				apperr("Not implemented.\n");
 				break;
 		}
@@ -119,12 +101,10 @@ int main(int argc, char *argv[])
 		if(sstart)
 		{
 			apperr("End-date is also needed.\n");
-			free(sstart);
 		}
 		if(send)
 		{
 			apperr("Start-date is also needed.\n");
-			free(send);
 		}
 		usage(argv[0], 1);
 	}
@@ -135,9 +115,6 @@ int main(int argc, char *argv[])
 	{
 		start = parse_date(sstart, '-');
 		end = parse_date(send, '-');
-
-		free(sstart);
-		free(send);
 
 		if(start == FMT_ERR || end == FMT_ERR)
 			apperr("Start-date and end-date must be in the format mm-dd-yyyy.\n");
@@ -165,7 +142,7 @@ int main(int argc, char *argv[])
 	char *line = NULL;
 	int cmnt = 0;
 	int lineno = 0;
-	time_t utm, utmlast;
+	time_t utm = 0, utmlast = 0;
 	char sio[4], scmnt[5], sdatetime[16];
 	time_t last_time = 0;
 	float totaltime = 0.0;
@@ -277,9 +254,11 @@ int main(int argc, char *argv[])
 		sdatetime[15] = 0;
 
 		utm = parse_datetime(sdatetime, '-', ':');
+		if(utm == FMT_ERR)
+			formaterr(lineno);
 
 		// if an OUT is followed closely by an IN, warn. But don't warn if this is the first time ever clocking in
-		if((utm - utmlast) <= (5*60) && iolast != NIL)
+		if((utm - utmlast) <= (5*60) && utmlast != 0)
 		{
 			char *tmp = basicdate(&utm);
 			printf("%s:%d: ***WARNING*** Employee clocked in shortly after clocking out on %s.\n", argv[optind], lineno, tmp);
