@@ -3,8 +3,8 @@
 
 #include <time.h>
 #define FMT_ERR		((time_t)(-1))
-#define MAX_YEAR	2500
-#define MIN_YEAR	1900
+#define MAX_YEAR	5000
+#define MIN_YEAR	1970
 
 #ifdef __cplusplus
 extern "C" {
