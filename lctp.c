@@ -28,6 +28,7 @@ void usage(char *progname, int ret)
 	printf("Options:\n");
 	printf("  -s, --start <date>\tStart date\n");
 	printf("  -e, --end <date>\tEnd date\n");
+	printf("  -q, --quiet\t\tDisplay only hours\n");
 	printf("  -h, --help\t\tPrint this help message and exit\n");
 	printf("  -v, --version\t\tPrint version information and exit\n");
 	exit(ret);
@@ -66,15 +67,17 @@ int main(int argc, char *argv[])
 	{
 		{"start", required_argument, 0, 's'},
 		{"end", required_argument, 0, 'e'},
+		{"quiet", no_argument, 0, 'q'},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'v'}
 	};
 	int opti;
 	char *sstart = NULL, *send = NULL;
+	bool quiet = false;
 
 	while(1)
 	{
-		int c = getopt_long(argc, argv, "s:e:hv", long_options, &opti);
+		int c = getopt_long(argc, argv, "s:e:qhv", long_options, &opti);
 		if(c == -1)
 		{
 			break;
@@ -86,6 +89,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'e':
 				send = optarg;
+				break;
+			case 'q':
+				quiet = true;
 				break;
 			case 'h':
 				usage(argv[0], 0);
@@ -298,7 +304,14 @@ int main(int argc, char *argv[])
 		iolast = iocur;
 		utmlast = utm;
 	}
-	printf("Total time: %.2f hours.\n", totaltime);
+	if(quiet)
+	{
+		printf("%.2f\n", totaltime);
+	}
+	else
+	{
+		printf("Total time: %.2f hours.\n", totaltime);
+	}
 
 	free(line);
 	return 0;
