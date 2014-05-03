@@ -8,13 +8,14 @@
 #include <errno.h>
 #include <limits.h>
 #include <getopt.h>
+#include <assert.h>
 #include "chomp.h"
 #include "datetime.h"
 #define lctp_atol_error_code	formaterr(lineno);
 #include "lctp_atol.h"
-#define LINELEN			30
-#define check(x)		if(!(x))formaterr(lineno)
-#define formaterr(x)	_formaterr(__FILE__,__LINE__,x)
+//#define LINELEN			30
+//#define check(x)		if(!(x))formaterr(lineno)
+#define format_error(x)	_format_error(x, argv[optind], line_num)
 
 void usage(char *progname, int ret)
 {
@@ -43,17 +44,17 @@ void err(char *msg)
 	exit(1);
 }
 
-void _formaterr(char *file, int line, int lineno)
+void _format_error(char *message, char *file, int lineno)
 {
-	apperr("%s:%d: Invalid format on line %d.\n", file, line, lineno);
+	apperr("%s:%d: Format error: %s\n", file, lineno, message);
 }
 
 typedef enum
 {
-	NIL = 0,
-	IN = 1,
-	OUT = 2
-} IO;
+	ACTION_NIL = 0,
+	ACTION_IN = 1,
+	ACTION_OUT = 2
+} ACTION;
 
 int main(int argc, char *argv[])
 {
@@ -109,23 +110,23 @@ int main(int argc, char *argv[])
 		usage(argv[0], 1);
 	}
 
-	time_t start, end;
+	time_t start_time, stop_time;
 
 	if(sstart)
 	{
-		start = parse_date(sstart, '-');
-		end = parse_date(send, '-');
+		start_time = parse_date(sstart, '-');
+		stop_time = parse_date(send, '-');
 
-		if(start == FMT_ERR || end == FMT_ERR)
+		if(start_time == FMT_ERR || stop_time == FMT_ERR)
 			apperr("Start-date and end-date must be in the format mm-dd-yyyy.\n");
 
-		if(start > end)
+		if(start_time > stop_time)
 			apperr("End date must be larger than or equal to the start date.");
 	}
 	else
 	{
-		start = -1;
-		end = -1;
+		start_time = -1;
+		stop_time = -1;
 	}
 
 	if(optind != (argc - 1))
@@ -140,173 +141,167 @@ int main(int argc, char *argv[])
 	}
 	size_t len = 0;
 	char *line = NULL;
-	int cmnt = 0;
-	int lineno = 0;
-	time_t utm = 0, utmlast = 0;
-	char sio[4], scmnt[5], sdatetime[16];
-	time_t last_time = 0;
-	float totaltime = 0.0;
-	IO iocur = NIL, iolast = NIL;
-	time_t now = time(NULL);
+	int comment_number = 0, line_num = 0;
+	time_t total_time = 0, this_time = 0, last_time = 0;
+	ACTION this_action = ACTION_NIL, last_action = ACTION_NIL;
 
 	while(getline(&line, &len, fp) != -1)
 	{
-		lineno++;
-		line = chomp(line);
-		int linei = strlen(line) - 1;
-		while(linei--)
+		assert(line != NULL);
+		char datetimestring[16]; // 10 chars, 5 chars, plus NULL ("mm/dd/yyyyhh:mm\0")
+		line_num++;
+		int line_len = strlen(line) - 1;
+/*
+ * Format of line:
+ * ^IN    04/25/2014        03:00$
+ * ^IN<4spaces>mm/dd/yyyy<2>cccc<2>hh:mm$
+ * ^OUT   04/25/2014        11:00$
+ * ^OUT<3spaces>mm/dd/yyyy<2>cccc<2>hh:mm$
+ */
+
+		// Put stuff from the last line into last_*
+		last_action = this_action;
+		last_time = this_time;
+
+		// Remove line-ending characters
+		if(line[line_len - 1] == '\n') // check last character of line
+			line[--line_len] = 0;      // if it is \n, replace it with NULL, and decrement line_len
+		if(line[line_len - 1] == '\r') // repeat the process checking for \r
+			line[--line_len] = 0;      // and replacing \r
+
+		// Check line length, WITHOUT the line-ending characters
+		if(line_len != 29)
+			format_error("Line is not the correct length.");
+
+		// Check type of entry, whether it is IN or OUT
+		if(strncmp(line, "IN", 2) == 0)
 		{
-			switch(linei)
+			this_action = ACTION_IN;
+			line += 2; // Move past the "IN"
+		}
+		else if(strncmp(line, "OUT", 3) == 0)
+		{	this_action = ACTION_OUT;
+			line += 3; // Move past the "OUT"
+		}
+		else
+			format_error("Line does not start with IN or OUT.");
+
+		// TODO Check for the spaces here!
+		if(strncmp(line, "   ", 3) == 0) // If the first three chars of 'line' are spaces...
+		{
+			if(this_action == ACTION_IN)
 			{
-				case 0:
-				case 1:
-				case 2:
-					sio[linei] = line[linei];
-					break;
-				case 3:
-				case 4:
-				case 5:
-					check(line[linei] == ' ');
-					break;
-				case 6:
-				case 7:
-					sdatetime[linei - 6] = line[linei];
-					break;
-				case 8:
-				case 11:
-					check(line[linei] == '/');
-					break;
-				case 9:
-				case 10:
-					sdatetime[linei - 9 + 3] = line[linei];
-					break;
-				case 12:
-				case 13:
-				case 14:
-				case 15:
-					sdatetime[linei - 12 + 6] = line[linei];
-					break;
-				case 16:
-				case 17:
-				case 22:
-				case 23:
-					check(line[linei] == ' ');
-					break;
-				case 18:
-				case 19:
-				case 20:
-				case 21:
-					scmnt[linei - 18] = line[linei];
-					break;
-				case 24:
-				case 25:
-					sdatetime[linei - 24 + 10] = line[linei];
-					break;
-				case 26:
-					check(line[linei] == ':');
-					break;
-				case 27:
-				case 28:
-					sdatetime[linei - 27 + 13] = line[linei];
-					break;
-				default:
-					formaterr(lineno);
+				if(line[3] != ' ') // If action==in, the fourth char needs to be a space too...
+					format_error("Incorrect number and placement of spaces.");
+				line += 1; // Make up for the extra space if action==in
 			}
-		}
-
-		sio[3] = 0;
-		scmnt[4] = 0;
-
-		// make sure that sio is IN or OUT and set iocur accordingly
-
-		if(sio[2] == ' ')
-		{
-			sio[2] = 0;
-		}
-		if(strcmp(sio, "IN") == 0)
-		{
-			iocur = IN;
-		}
-		else if(strcmp(sio, "OUT") == 0)
-		{
-			iocur = OUT;
 		}
 		else
 		{
-			formaterr(lineno);
+			format_error("Incorrect number and placement of spaces.");
+		}
+		line += 3; // Move past the spaces
+
+
+		///////HERE WE ARE, COPY DATETIME///////
+		strncpy(datetimestring, line, 10);
+		datetimestring[10] = 0;
+
+
+		// Check that the next char is a space
+		if(line[0] == ' ')
+			line++; // Move past the space
+		else
+			format_error("Incorrect number and placement of spaces.");
+
+		// Make sure the comment number is valid/within range
+		if(strncmp(line, "    ", 4) == 0)
+		{
+			comment_number = -1;  // No comment number on this line...
+		}
+		else
+		{
+			char tmp = line[4]; // Save char at 4
+			line[4] = 0; // Make the string only 4 chars long
+			errno = 0;
+			comment_number = strtol(line, NULL, 10); // TODO Verify that this works
+			if(errno != 0)
+				format_error("Comment number seems to be present, but is not a number.");
+			line[4] = tmp; // Restore char at 4
 		}
 
-		// an IN must not follow an IN, vice versa for OUT
-		if(iocur == iolast)
+		// Move pointer past comment field
+		line += 4;
+
+
+		////////////copy time string//////////////
+		strncat(datetimestring, line, 5);
+		datetimestring[15] = 0;
+
+		/*******************************************************************************
+		 * Well, here we are... parsing the date & time are the only things left now. *
+		*******************************************************************************/
+
+		printf("HEY: %s\n", datetimestring);
+		struct tm *timestruct = calloc(1, sizeof(struct tm));
+		assert(timestruct != NULL);
+		char *result = strptime(datetimestring, "%m/%d/%Y%H:%M", timestruct);
+		if(result == NULL || *result != 0)
+			format_error("Date or time is not in correct format.");
+		this_time = mktime(timestruct);
+		free(timestruct);
+
+///////////////////////////////////// Logic section starts here, by the Emperor's Decree! ///////////////////////////////////
+
+		// Check whether the current and last action are the same
+		if(this_action == last_action)
+			format_error("The last line was of the same type as this one.");
+	
+
+		// If the IN and the OUT are close together, warn.
+		if(last_action == ACTION_OUT && labs(this_time - last_time) / 60 <= 10)
 		{
-			formaterr(lineno);
-		}
-
-		// make sure the comment number is valid/within range
-		if(strcmp(scmnt, "    ") != 0)
-		{
-			lctp_atol(cmnt, 1000, 9999);
-		}
-
-		// normalize and then parse sdatetime
-		sdatetime[2] = sdatetime[5] = '-';
-		sdatetime[12] = ':';
-		sdatetime[15] = 0;
-
-		utm = parse_datetime(sdatetime, '-', ':');
-		if(utm == FMT_ERR)
-			formaterr(lineno);
-
-		// if an OUT is followed closely by an IN, warn. But don't warn if this is the first time ever clocking in
-		if((utm - utmlast) <= (5*60) && utmlast != 0)
-		{
-			char *tmp = basicdate(&utm);
-			printf("%s:%d: ***WARNING*** Employee clocked in shortly after clocking out on %s.\n", argv[optind], lineno, tmp);
+			char *tmp = basicdate(&this_time);
+			assert(tmp != NULL);
+			// TODO Change to basicdatetime??
+			printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%d minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
 			free(tmp);
 		}
+		// Make sure the entries come after each other, time-wise.
+		if(this_time < last_time)
+			format_error("This line's date and time was not after the last line's.");
 
-		// make sure the entries are in the right order
-		if(utm < last_time)
-			formaterr(lineno);
+		// Entries must not be in the future
+		if(this_time <= time(NULL))
+			format_error("This line's date and time are in the future.");
 
-		// entries must not be in the future
-		if(utm > now)
-			formaterr(lineno);
-
-		time_t to_add;
-		if(utm >= start || start == -1)
+		if(this_time >= start_time || start_time == -1) // If this entry falls between start_time and stop_time, OR start_time is not set
 		{
-			if((utm <= (end + (24 * 60 * 60 - 1))) || end == -1)
+			if(this_time < stop_time + DAYS(1) || stop_time == -1) // If this_time is LESS than stop_time + 1 full day OR stop_time is not set
 			{
-				if(iocur == OUT)   // if we are processing an OUT, calculate the time
+				if(this_action == ACTION_OUT)   // If we are processing an OUT, calculate the time
 				{
-					to_add = utm - last_time;
-					if(to_add > (12 * 60 * 60))
+					time_t to_add = this_time - last_time; // Amount to add to the total
+					if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
 					{
-						char *tmp = basicdate(&utm);
-						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], lineno, ((float)to_add) / 60 / 60, tmp);
+						char *tmp = basicdate(&this_time);
+						assert(tmp != NULL);
+						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
 						free(tmp);
 					}
-					totaltime += ((float)to_add) / 60 / 60;
+					total_time += this_time - last_time;
 				}
-	
-				if(iocur == IN)
-					last_time = utm;
 			}
 		}
-
-		iolast = iocur;
-		utmlast = utm;
 	}
 	if(quiet)
 	{
-		printf("%.2f\n", totaltime);
+		printf("%.2f\n", (double)total_time / 60 / 60);
 	}
 	else
 	{
-		printf("Total time: %.2f hours.\n", totaltime);
+		printf("Total time: %.2f hours.\n", (double)total_time / 60 / 60);
 	}
-
 	free(line);
 	return 0;
 }
