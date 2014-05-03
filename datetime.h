@@ -1,5 +1,5 @@
-#ifndef __DATETIM_H_INC__
-#define __DATETIM_H_INC__
+#ifndef __DATETIME_H_INC__
+#define __DATETIME_H_INC__
 
 #include <time.h>
 #define FMT_ERR		((time_t)(-1))

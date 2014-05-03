@@ -10,14 +10,8 @@
 #include <getopt.h>
 #include "chomp.h"
 #include "datetime.h"
-
-#define satio(str, max, min)	errno = 0; \
-	str = strtol(s ## str, NULL, 10); \
-	if(errno != 0) \
-		formaterr(lineno); \
-	if((str > max) || (str < min)) \
-		formaterr(lineno)
-
+#define lctp_atol_error_code	formaterr(lineno);
+#include "lctp_atol.h"
 #define LINELEN			30
 #define check(x)		if(!(x))formaterr(lineno)
 #define formaterr(x)	_formaterr(__FILE__,__LINE__,x)
@@ -251,7 +245,7 @@ int main(int argc, char *argv[])
 		// make sure the comment number is valid/within range
 		if(strcmp(scmnt, "    ") != 0)
 		{
-			satio(cmnt, 9999, 1000);
+			lctp_atol(cmnt, 1000, 9999);
 		}
 
 		// normalize and then parse sdatetime

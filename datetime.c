@@ -3,13 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "datetime.h"
-
-#define satio(str, max, min)	errno = 0; \
-	str = strtol(s ## str, NULL, 10); \
-	if(errno != 0) \
-		return FMT_ERR; \
-	if((str > max) || (str < min)) \
-		return FMT_ERR
+#define lctp_atol_error_code	return FMT_ERR;
+#include "lctp_atol.h"
 
 time_t parse_date(char *str, char sep)
 {
@@ -25,15 +20,15 @@ time_t parse_date(char *str, char sep)
 
 	strncpy(smonth, str, 2);
 	smonth[2] = 0;
-	satio(month, 12, 1);
+	lctp_atol(month, 1, 12);
 
 	strncpy(sday, str+3, 2);
 	sday[2] = 0;
-	satio(day, 31, 1);
+	lctp_atol(day, 1, 31);
 
 	strncpy(syear, str+6, 4);
 	syear[4] = 0;
-	satio(year, 3000, 1900);
+	lctp_atol(year, MIN_YEAR, MAX_YEAR);
 
 	if((str[2] != sep) || (str[5] != sep))
 		return FMT_ERR;
@@ -68,27 +63,27 @@ time_t parse_datetime(char *str, char dsep, char tsep)
 
 	strncpy(smonth, str, 2);
 	smonth[2] = 0;
-	satio(month, 12, 1);
+	lctp_atol(month, 1, 12);
 	str += 3;
 
 	strncpy(sday, str, 2);
 	sday[2] = 0;
-	satio(day, 31, 1);
+	lctp_atol(day, 1, 31);
 	str += 3;
 
 	strncpy(syear, str, 4);
 	syear[4] = 0;
-	satio(year, MAX_YEAR, MIN_YEAR);
+	lctp_atol(year, MIN_YEAR, MAX_YEAR);
 	str += 4;
 
 	strncpy(shour, str, 2);
 	shour[2] = 0;
-	satio(hour, 23, 0);
+	lctp_atol(hour, 0, 23);
 	str += 3;
 
 	strncpy(sminute, str, 2);
 	sminute[2] = 0;
-	satio(minute, 59, 0);
+	lctp_atol(minute, 0, 59);
 
 		
 	struct tm *utm = calloc(1, sizeof(struct tm));
