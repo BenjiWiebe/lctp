@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib
+AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib -I$(top_srcdir)
 LDADD = lib/libgnu.a
 SUBDIRS = lib tests
 bin_PROGRAMS = lctp lctp_helper
