@@ -8,14 +8,13 @@
 #include <errno.h>
 #include <limits.h>
 #include <getopt.h>
-#include <assert.h>
 #include "chomp.h"
 #include "datetime.h"
 #define lctp_atol_error_code	formaterr(lineno);
 #include "lctp_atol.h"
 //#define LINELEN			30
 //#define check(x)		if(!(x))formaterr(lineno)
-#define format_error(x)	_format_error(x, argv[optind], line_num)
+#define format_error(x)	_format_error(x, argv[optind], line_num, __LINE__)
 
 void usage(char *progname, int ret)
 {
@@ -44,9 +43,34 @@ void err(char *msg)
 	exit(1);
 }
 
-void _format_error(char *message, char *file, int lineno)
+void _format_error(char *message, char *file, int lineno, int sourceline)
 {
-	apperr("%s:%d: Format error: %s\n", file, lineno, message);
+	apperr("%s:%d: Format error: %s (%d)\n", file, lineno, message, sourceline);
+}
+
+char *get_line(FILE *fp)
+{
+	size_t size = 256;
+	char *ret = calloc(size, sizeof(char));
+	if(ret == NULL)
+		err("calloc");
+	int x = 0, i = 0;
+	while((x = fgetc(fp)) != EOF)
+	{
+		if(x == '\r' || x == '\n')
+			break;
+		ret[i++] = (char)x;
+		if(i == size)
+		{
+			int oldsize = size;
+			size *= 1.5;
+			ret = realloc(ret, size);
+			if(ret == NULL)
+				err("realloc");
+			memset(ret + oldsize, 0, size - oldsize);
+		}
+	}
+	return ret;
 }
 
 typedef enum
@@ -139,18 +163,17 @@ int main(int argc, char *argv[])
 	{
 		err("fopen");
 	}
-	size_t len = 0;
 	char *line = NULL;
-	int comment_number = 0, line_num = 0;
-	time_t total_time = 0, this_time = 0, last_time = 0;
+	int comment_number = 0, line_num = 0, len = 0;
+	time_t total_time = 0, this_time = 0, last_time = 0, now_time = time(NULL);
 	ACTION this_action = ACTION_NIL, last_action = ACTION_NIL;
 
+	//while((line = get_line(fp)) != NULL)
 	while(getline(&line, &len, fp) != -1)
 	{
-		assert(line != NULL);
 		char datetimestring[16]; // 10 chars, 5 chars, plus NULL ("mm/dd/yyyyhh:mm\0")
 		line_num++;
-		int line_len = strlen(line) - 1;
+		int line_len = strlen(line);
 /*
  * Format of line:
  * ^IN    04/25/2014        03:00$
@@ -170,6 +193,7 @@ int main(int argc, char *argv[])
 			line[--line_len] = 0;      // and replacing \r
 
 		// Check line length, WITHOUT the line-ending characters
+		fprintf(stderr, "linelen:%d\nline:'%s'\n", line_len, line);
 		if(line_len != 29)
 			format_error("Line is not the correct length.");
 
@@ -206,11 +230,12 @@ int main(int argc, char *argv[])
 		///////HERE WE ARE, COPY DATETIME///////
 		strncpy(datetimestring, line, 10);
 		datetimestring[10] = 0;
+		line += 10; // Move past the date string
 
 
-		// Check that the next char is a space
-		if(line[0] == ' ')
-			line++; // Move past the space
+		// Check that the next two chars are spaces
+		if(line[0] == ' ' && line[1] == ' ')
+			line += 2; // Move past the spaces
 		else
 			format_error("Incorrect number and placement of spaces.");
 
@@ -233,6 +258,11 @@ int main(int argc, char *argv[])
 		// Move pointer past comment field
 		line += 4;
 
+		// Check that the next two chars are spaces
+		if(line[0] == ' ' && line[1] == ' ')
+			line += 2; // Move past the spaces
+		else
+			format_error("Incorrect number and placement of spaces.");
 
 		////////////copy time string//////////////
 		strncat(datetimestring, line, 5);
@@ -242,9 +272,9 @@ int main(int argc, char *argv[])
 		 * Well, here we are... parsing the date & time are the only things left now. *
 		*******************************************************************************/
 
-		printf("HEY: %s\n", datetimestring);
 		struct tm *timestruct = calloc(1, sizeof(struct tm));
-		assert(timestruct != NULL);
+		if(timestruct == NULL)
+			err("calloc");
 		char *result = strptime(datetimestring, "%m/%d/%Y%H:%M", timestruct);
 		if(result == NULL || *result != 0)
 			format_error("Date or time is not in correct format.");
@@ -262,8 +292,8 @@ int main(int argc, char *argv[])
 		if(last_action == ACTION_OUT && labs(this_time - last_time) / 60 <= 10)
 		{
 			char *tmp = basicdate(&this_time);
-			assert(tmp != NULL);
-			// TODO Change to basicdatetime??
+			if(tmp == NULL)
+				err("malloc");
 			printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%d minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
 			free(tmp);
 		}
@@ -272,7 +302,7 @@ int main(int argc, char *argv[])
 			format_error("This line's date and time was not after the last line's.");
 
 		// Entries must not be in the future
-		if(this_time <= time(NULL))
+		if(this_time > now_time)
 			format_error("This line's date and time are in the future.");
 
 		if(this_time >= start_time || start_time == -1) // If this entry falls between start_time and stop_time, OR start_time is not set
@@ -285,7 +315,8 @@ int main(int argc, char *argv[])
 					if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
 					{
 						char *tmp = basicdate(&this_time);
-						assert(tmp != NULL);
+						if(tmp == NULL)
+							err("malloc");
 						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
 						free(tmp);
 					}
@@ -302,6 +333,5 @@ int main(int argc, char *argv[])
 	{
 		printf("Total time: %.2f hours.\n", (double)total_time / 60 / 60);
 	}
-	free(line);
 	return 0;
 }
