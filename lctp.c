@@ -48,31 +48,6 @@ void _format_error(char *message, char *file, int lineno, int sourceline)
 	apperr("%s:%d: Format error: %s (%d)\n", file, lineno, message, sourceline);
 }
 
-char *get_line(FILE *fp)
-{
-	size_t size = 256;
-	char *ret = calloc(size, sizeof(char));
-	if(ret == NULL)
-		err("calloc");
-	int x = 0, i = 0;
-	while((x = fgetc(fp)) != EOF)
-	{
-		if(x == '\r' || x == '\n')
-			break;
-		ret[i++] = (char)x;
-		if(i == size)
-		{
-			int oldsize = size;
-			size *= 1.5;
-			ret = realloc(ret, size);
-			if(ret == NULL)
-				err("realloc");
-			memset(ret + oldsize, 0, size - oldsize);
-		}
-	}
-	return ret;
-}
-
 typedef enum
 {
 	ACTION_NIL = 0,
@@ -163,14 +138,15 @@ int main(int argc, char *argv[])
 	{
 		err("fopen");
 	}
-	char *line = NULL;
+
+	char *line = NULL, *orig_line = NULL;
 	int comment_number = 0, line_num = 0, len = 0;
 	time_t total_time = 0, this_time = 0, last_time = 0, now_time = time(NULL);
 	ACTION this_action = ACTION_NIL, last_action = ACTION_NIL;
 
-	//while((line = get_line(fp)) != NULL)
 	while(getline(&line, &len, fp) != -1)
 	{
+		orig_line = line;
 		char datetimestring[16]; // 10 chars, 5 chars, plus NULL ("mm/dd/yyyyhh:mm\0")
 		line_num++;
 		int line_len = strlen(line);
@@ -324,7 +300,10 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+		line = orig_line; // Restore the pointer, for free() or for getline()
 	}
+	free(line);
+	fclose(fp);
 	if(quiet)
 	{
 		printf("%.2f\n", (double)total_time / 60 / 60);
