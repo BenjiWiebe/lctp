@@ -169,7 +169,6 @@ int main(int argc, char *argv[])
 			line[--line_len] = 0;      // and replacing \r
 
 		// Check line length, WITHOUT the line-ending characters
-		fprintf(stderr, "linelen:%d\nline:'%s'\n", line_len, line);
 		if(line_len != 29)
 			format_error("Line is not the correct length.");
 
