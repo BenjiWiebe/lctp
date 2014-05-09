@@ -150,13 +150,6 @@ int main(int argc, char *argv[])
 		char datetimestring[16]; // 10 chars, 5 chars, plus NULL ("mm/dd/yyyyhh:mm\0")
 		line_num++;
 		int line_len = strlen(line);
-/*
- * Format of line:
- * ^IN    04/25/2014        03:00$
- * ^IN<4spaces>mm/dd/yyyy<2>cccc<2>hh:mm$
- * ^OUT   04/25/2014        11:00$
- * ^OUT<3spaces>mm/dd/yyyy<2>cccc<2>hh:mm$
- */
 
 		// Put stuff from the last line into last_*
 		last_action = this_action;
@@ -201,12 +194,9 @@ int main(int argc, char *argv[])
 		}
 		line += 3; // Move past the spaces
 
-
-		///////HERE WE ARE, COPY DATETIME///////
 		strncpy(datetimestring, line, 10);
 		datetimestring[10] = 0;
 		line += 10; // Move past the date string
-
 
 		// Check that the next two chars are spaces
 		if(line[0] == ' ' && line[1] == ' ')
@@ -239,13 +229,8 @@ int main(int argc, char *argv[])
 		else
 			format_error("Incorrect number and placement of spaces.");
 
-		////////////copy time string//////////////
 		strncat(datetimestring, line, 5);
 		datetimestring[15] = 0;
-
-		/*******************************************************************************
-		 * Well, here we are... parsing the date & time are the only things left now. *
-		*******************************************************************************/
 
 		struct tm *timestruct = calloc(1, sizeof(struct tm));
 		if(timestruct == NULL)
@@ -256,22 +241,13 @@ int main(int argc, char *argv[])
 		this_time = mktime(timestruct);
 		free(timestruct);
 
-///////////////////////////////////// Logic section starts here, by the Emperor's Decree! ///////////////////////////////////
+		// Now it is time to make sure the dates and times make sense
 
 		// Check whether the current and last action are the same
 		if(this_action == last_action)
 			format_error("The last line was of the same type as this one.");
 	
 
-		// If the IN and the OUT are close together, warn.
-		if(last_action == ACTION_OUT && labs(this_time - last_time) / 60 <= 10)
-		{
-			char *tmp = basicdate(&this_time);
-			if(tmp == NULL)
-				err("malloc");
-			printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%d minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
-			free(tmp);
-		}
 		// Make sure the entries come after each other, time-wise.
 		if(this_time < last_time)
 			format_error("This line's date and time was not after the last line's.");
@@ -284,6 +260,16 @@ int main(int argc, char *argv[])
 		{
 			if(this_time < stop_time + DAYS(1) || stop_time == -1) // If this_time is LESS than stop_time + 1 full day OR stop_time is not set
 			{
+				// If the IN and the OUT are close together, warn.
+				if(last_action == ACTION_OUT && labs(this_time - last_time) / 60 <= 10)
+				{
+					char *tmp = basicdate(&this_time);
+					if(tmp == NULL)
+						err("malloc");
+					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%d minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
+					free(tmp);
+				}
+
 				if(this_action == ACTION_OUT)   // If we are processing an OUT, calculate the time
 				{
 					time_t to_add = this_time - last_time; // Amount to add to the total
