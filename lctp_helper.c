@@ -24,10 +24,10 @@ int main(int argc, char *argv[])
 	strftime(sbuf, 11, "%m-%d-%Y", localtime(&t));
 	t -= 60 * 60 * 24 * 7;
 	strftime(ebuf, 11, "%m-%d-%Y", localtime(&t));
-	int s = strlen(argv[1]) + 40;
+	int s = strlen(argv[1]) + 43;
 	prog = malloc(s);
 	if(prog == NULL)err("malloc");
-	snprintf(prog, s-1, "lctp -s %10s -e %10s %s", ebuf, sbuf, argv[1]);
+	snprintf(prog, s-1, "lctp -q -s %10s -e %10s %s", ebuf, sbuf, argv[1]);
 	FILE *p = popen(prog, "r");
 	if(p == NULL)err("malloc");
 	char *line = NULL;
