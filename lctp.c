@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 					char *tmp = basicdate(&this_time);
 					if(tmp == NULL)
 						err("malloc");
-					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%d minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
+					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
 					free(tmp);
 				}
 
