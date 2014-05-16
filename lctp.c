@@ -140,7 +140,8 @@ int main(int argc, char *argv[])
 	}
 
 	char *line = NULL, *orig_line = NULL;
-	int comment_number = 0, line_num = 0, len = 0;
+	int comment_number = 0, line_num = 0;
+	size_t len = 0;
 	time_t total_time = 0, this_time = 0, last_time = 0, now_time = time(NULL);
 	ACTION this_action = ACTION_NIL, last_action = ACTION_NIL;
 
