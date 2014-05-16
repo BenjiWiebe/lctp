@@ -3,6 +3,6 @@ AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib -I$(top_srcdir)
 LDADD = lib/libgnu.a
 SUBDIRS = lib tests
 bin_PROGRAMS = lctp lctp_helper
-lctp_SOURCES = lctp.c datetime.c datetime.h
+lctp_SOURCES = lctp.c datetime.c datetime.h lctp_atol.h chomp.h
 lctp_helper_SOURCES = lctp_helper.c
 EXTRA_DIST = m4/gnulib-cache.m4
