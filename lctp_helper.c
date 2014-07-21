@@ -1,44 +1,58 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <errno.h>
-void err(char *msg)
+
+void fatalerror(char *s)
 {
-	fprintf(stderr, "%s: %s\n", msg, strerror(errno));
+	perror(s);
 	exit(EXIT_FAILURE);
 }
+
 int main(int argc, char *argv[])
 {
-	if(argc!=2)
+
+	if(argc != 2)
 	{
 		printf("Usage: %s <timefile>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-	char *prog;
-	time_t t = time(NULL);
-	char *sbuf, *ebuf;
-	sbuf = malloc(11);
-	ebuf = malloc(11);
-	if(sbuf == NULL || ebuf == NULL)err("malloc");
-	strftime(sbuf, 11, "%m-%d-%Y", localtime(&t));
-	t -= 60 * 60 * 24 * 7;
-	strftime(ebuf, 11, "%m-%d-%Y", localtime(&t));
-	int s = strlen(argv[1]) + 43;
-	prog = malloc(s);
-	if(prog == NULL)err("malloc");
-	snprintf(prog, s-1, "lctp -q -s %10s -e %10s %s", ebuf, sbuf, argv[1]);
-	FILE *p = popen(prog, "r");
-	if(p == NULL)err("malloc");
-	char *line = NULL;
-	size_t len = 0;
-	while(getline(&line, &len, p) != -1)
+
+	time_t now = time(NULL);
+	struct tm *bdt = localtime(&now);
+	bdt->tm_sec = 0;
+	bdt->tm_min = 0;
+	bdt->tm_hour = 0;
+	time_t ttoday = timelocal(bdt);
+	struct tm *today = localtime(&ttoday);
+	int days_ago = 0;
+	while(today->tm_wday != 4)
 	{
-		printf("%s",line);
+		if(!today->tm_wday)
+			today->tm_wday = 6;
+		else
+			today->tm_wday--;
+		days_ago++;
 	}
-	pclose(p);
-	free(prog);
-	free(sbuf);
-	free(ebuf);
+	days_ago++;
+	size_t filename_len = strlen(argv[1]);
+	char *begin_arg = malloc(11), *end_arg = malloc(11), *command = malloc(39+filename_len);
+	if(!(begin_arg && end_arg))
+		fatalerror("malloc");
+	time_t end = timelocal(today) - days_ago * 24 * 60 * 60;
+	time_t begin = end - (6 * 24 * 60 * 60); //FIXME (in lctp) Use 6 instead of 7 since lctp is INCLUSIVE with the end date
+	strftime(begin_arg, 11, "%m-%d-%Y", localtime(&begin));
+	strftime(end_arg, 11, "%m-%d-%Y", localtime(&end));
+	snprintf(command, 39+filename_len, "lctp -q -s %s -e %s %s", begin_arg, end_arg, argv[1]);
+	char line[128];
+	FILE *pipe = popen(command, "r");
+	if(pipe == NULL)
+		fatalerror("popen");
+	while(fgets(line, 128, pipe))
+		printf("%s", line);
+	pclose(pipe);
+	free(begin_arg);
+	free(end_arg);
+	free(command);
 	return 0;
 }
