@@ -24,6 +24,7 @@ void usage(char *progname, int ret)
 	printf("  -s, --start <date>\tStart date\n");
 	printf("  -e, --end <date>\tEnd date\n");
 	printf("  -q, --quiet\t\tDisplay only hours\n");
+	printf("      --no-warnings\tSuppress warnings\n");
 	printf("  -h, --help\t\tPrint this help message and exit\n");
 	printf("  -v, --version\t\tPrint version information and exit\n");
 	exit(ret);
@@ -55,13 +56,14 @@ int main(int argc, char *argv[])
 	{
 		{"start", required_argument, 0, 's'},
 		{"end", required_argument, 0, 'e'},
+		{"no-warnings", no_argument, 0, 1},
 		{"quiet", no_argument, 0, 'q'},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'v'}
 	};
 	int opti;
 	char *sstart = NULL, *send = NULL;
-	bool quiet = false;
+	bool quiet = false, warnings = true;
 
 	while(1)
 	{
@@ -77,6 +79,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'e':
 				send = optarg;
+				break;
+			case 1:
+				warnings = false;
 				break;
 			case 'q':
 				quiet = true;
@@ -189,7 +194,8 @@ int main(int argc, char *argv[])
 					char *tmp = basicdate(&l.time);
 					if(tmp == NULL)
 						err("malloc");
-					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
+					if(warnings)
+						printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
 					free(tmp);
 				}
 
@@ -201,7 +207,8 @@ int main(int argc, char *argv[])
 						char *tmp = basicdate(&l.time);
 						if(tmp == NULL)
 							err("malloc");
-						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
+						if(warnings)
+							printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
 						free(tmp);
 					}
 					total_time += l.time - last_time;
