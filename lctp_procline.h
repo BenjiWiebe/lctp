@@ -7,6 +7,7 @@ struct lctp_lineinfo {
 	enum actions action;
 	char datesep;
 	char timesep;
+	int commentno;
 	enum lctp_procline_errors error;
 };
 const char *lctp_procline_strerror(enum lctp_procline_errors);

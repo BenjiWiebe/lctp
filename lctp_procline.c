@@ -94,12 +94,28 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	lctp_procline_atol(strdt, &tmp, 1900, 2200); // TODO Handle error
 	t.tm_year = tmp - 1900;
 	line += 4;
-	if(strncmp(line, "        ", 8))
+	if(strncmp(line, "  ", 2))
 	{
 		i->error = PLE_SPACES;
 		return -1;
 	}
-	line += 8;
+	line += 2;
+	if(strncmp(line, "    ", 4))
+	{
+		strncpy(strdt, line, 4);
+		strdt[4] = 0;
+		lctp_procline_atol(strdt, &i->commentno, 1000, 9999); // TODO Handle error
+	}
+	else
+	{
+		i->commentno = 0;
+	}
+	line += 4;
+	if(strncmp(line, "  ", 2))
+	{
+		i->error = PLE_SPACES;
+		return -1;
+	}
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
