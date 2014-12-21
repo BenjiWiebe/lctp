@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include "chomp.h"
 #include "datetime.h"
+#include "lctp_procline.h"
 #define lctp_atol_error_code	formaterr(lineno);
 #include "lctp_atol.h"
 //#define LINELEN			30
@@ -47,13 +48,6 @@ void _format_error(char *message, char *file, int lineno, int sourceline)
 {
 	apperr("%s:%d: Format error: %s (%d)\n", file, lineno, message, sourceline);
 }
-
-typedef enum
-{
-	ACTION_NIL = 0,
-	ACTION_IN = 1,
-	ACTION_OUT = 2
-} ACTION;
 
 int main(int argc, char *argv[])
 {
@@ -142,147 +136,75 @@ int main(int argc, char *argv[])
 	char *line = NULL, *orig_line = NULL;
 	int comment_number = 0, line_num = 0;
 	size_t len = 0;
-	time_t total_time = 0, this_time = 0, last_time = 0, now_time = time(NULL);
-	ACTION this_action = ACTION_NIL, last_action = ACTION_NIL;
+	time_t total_time = 0, last_time = 0, now_time = time(NULL);
+	enum actions last_action = ACTION_NIL;
+	struct lctp_lineinfo l = {0};
+	l.timesep = ':';
+	l.datesep = '/';
 
 	while(getline(&line, &len, fp) != -1)
 	{
-		orig_line = line;
-		char datetimestring[16]; // 10 chars, 5 chars, plus NULL ("mm/dd/yyyyhh:mm\0")
+
+		// Increment the line number
 		line_num++;
-		int line_len = strlen(line);
+
+		// Save the unmodified pointer from getline() for passing to free()
+		orig_line = line;
 
 		// Put stuff from the last line into last_*
-		last_action = this_action;
-		last_time = this_time;
+		last_action = l.action;
+		last_time = l.time;
 
-		// Remove line-ending characters
-		if(line[line_len - 1] == '\n') // check last character of line
-			line[--line_len] = 0;      // if it is \n, replace it with NULL, and decrement line_len
-		if(line[line_len - 1] == '\r') // repeat the process checking for \r
-			line[--line_len] = 0;      // and replacing \r
+		// Zero out 'l'...necessary??
+		l.action = ACTION_NIL;
+		l.error = PLE_OK;
+		l.time = 0;
 
-		// Check line length, WITHOUT the line-ending characters
-		if(line_len != 29)
-			format_error("Line is not the correct length.");
-
-		// Check type of entry, whether it is IN or OUT
-		if(strncmp(line, "IN", 2) == 0)
-		{
-			this_action = ACTION_IN;
-			line += 2; // Move past the "IN"
-		}
-		else if(strncmp(line, "OUT", 3) == 0)
-		{	this_action = ACTION_OUT;
-			line += 3; // Move past the "OUT"
-		}
-		else
-			format_error("Line does not start with IN or OUT.");
-
-		// TODO Check for the spaces here!
-		if(strncmp(line, "   ", 3) == 0) // If the first three chars of 'line' are spaces...
-		{
-			if(this_action == ACTION_IN)
-			{
-				if(line[3] != ' ') // If action==in, the fourth char needs to be a space too...
-					format_error("Incorrect number and placement of spaces.");
-				line += 1; // Make up for the extra space if action==in
-			}
-		}
-		else
-		{
-			format_error("Incorrect number and placement of spaces.");
-		}
-		line += 3; // Move past the spaces
-
-		strncpy(datetimestring, line, 10);
-		datetimestring[10] = 0;
-		line += 10; // Move past the date string
-
-		// Check that the next two chars are spaces
-		if(line[0] == ' ' && line[1] == ' ')
-			line += 2; // Move past the spaces
-		else
-			format_error("Incorrect number and placement of spaces.");
-
-		// Make sure the comment number is valid/within range
-		if(strncmp(line, "    ", 4) == 0)
-		{
-			comment_number = -1;  // No comment number on this line...
-		}
-		else
-		{
-			char tmp = line[4]; // Save char at 4
-			line[4] = 0; // Make the string only 4 chars long
-			errno = 0;
-			comment_number = strtol(line, NULL, 10); // TODO Verify that this works
-			if(errno != 0)
-				format_error("Comment number seems to be present, but is not a number.");
-			line[4] = tmp; // Restore char at 4
-		}
-
-		// Move pointer past comment field
-		line += 4;
-
-		// Check that the next two chars are spaces
-		if(line[0] == ' ' && line[1] == ' ')
-			line += 2; // Move past the spaces
-		else
-			format_error("Incorrect number and placement of spaces.");
-
-		strncat(datetimestring, line, 5);
-		datetimestring[15] = 0;
-
-		struct tm *timestruct = calloc(1, sizeof(struct tm));
-		if(timestruct == NULL)
-			err("calloc");
-		char *result = strptime(datetimestring, "%m/%d/%Y%H:%M", timestruct);
-		if(result == NULL || *result != 0)
-			format_error("Date or time is not in correct format.");
-		this_time = mktime(timestruct);
-		free(timestruct);
+		lctp_procline(&l, line);
+		if(l.error != PLE_OK)
+			format_error((char*)lctp_procline_strerror(l.error));
 
 		// Now it is time to make sure the dates and times make sense
 
 		// Check whether the current and last action are the same
-		if(this_action == last_action)
+		if(l.action == last_action)
 			format_error("The last line was of the same type as this one.");
 	
 
 		// Make sure the entries come after each other, time-wise.
-		if(this_time < last_time)
+		if(l.time < last_time)
 			format_error("This line's date and time was not after the last line's.");
 
 		// Entries must not be in the future
-		if(this_time > now_time)
+		if(l.time > now_time)
 			format_error("This line's date and time are in the future.");
 
-		if(this_time >= start_time || start_time == -1) // If this entry falls between start_time and stop_time, OR start_time is not set
+		if(l.time >= start_time || start_time == -1) // If this entry falls between start_time and stop_time, OR start_time is not set
 		{
-			if(this_time < stop_time + DAYS(1) || stop_time == -1) // If this_time is LESS than stop_time + 1 full day OR stop_time is not set
+			if(l.time < stop_time + DAYS(1) || stop_time == -1) // If l.time is LESS than stop_time + 1 full day OR stop_time is not set
 			{
 				// If the IN and the OUT are close together, warn.
-				if(last_action == ACTION_OUT && labs(this_time - last_time) / 60 <= 10)
+				if(last_action == ACTION_OUT && labs(l.time - last_time) / 60 <= 10)
 				{
-					char *tmp = basicdate(&this_time);
+					char *tmp = basicdate(&l.time);
 					if(tmp == NULL)
 						err("malloc");
-					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(this_time - last_time) / 60, tmp);
+					printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
 					free(tmp);
 				}
 
-				if(this_action == ACTION_OUT)   // If we are processing an OUT, calculate the time
+				if(l.action == ACTION_OUT)   // If we are processing an OUT, calculate the time
 				{
-					time_t to_add = this_time - last_time; // Amount to add to the total
+					time_t to_add = l.time - last_time; // Amount to add to the total
 					if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
 					{
-						char *tmp = basicdate(&this_time);
+						char *tmp = basicdate(&l.time);
 						if(tmp == NULL)
 							err("malloc");
 						printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
 						free(tmp);
 					}
-					total_time += this_time - last_time;
+					total_time += l.time - last_time;
 				}
 			}
 		}
