@@ -116,6 +116,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 		i->error = PLE_SPACES;
 		return -1;
 	}
+	line += 2;
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
