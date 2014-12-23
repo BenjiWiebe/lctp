@@ -25,6 +25,7 @@ void usage(char *progname, int ret)
 	printf("  -e, --end <date>\tEnd date\n");
 	printf("  -q, --quiet\t\tDisplay only hours\n");
 	printf("      --no-warnings\tSuppress warnings\n");
+	printf("      --comments\tShow comment numbers\n");
 	printf("  -h, --help\t\tPrint this help message and exit\n");
 	printf("  -v, --version\t\tPrint version information and exit\n");
 	exit(ret);
@@ -57,13 +58,14 @@ int main(int argc, char *argv[])
 		{"start", required_argument, 0, 's'},
 		{"end", required_argument, 0, 'e'},
 		{"no-warnings", no_argument, 0, 1},
+		{"comments", no_argument, 0, 2},
 		{"quiet", no_argument, 0, 'q'},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'v'}
 	};
 	int opti;
 	char *sstart = NULL, *send = NULL;
-	bool quiet = false, warnings = true;
+	bool quiet = false, warnings = true, comments = false;
 
 	while(1)
 	{
@@ -82,6 +84,9 @@ int main(int argc, char *argv[])
 				break;
 			case 1:
 				warnings = false;
+				break;
+			case 2:
+				comments = true;
 				break;
 			case 'q':
 				quiet = true;
@@ -164,6 +169,7 @@ int main(int argc, char *argv[])
 		l.action = ACTION_NIL;
 		l.error = PLE_OK;
 		l.time = 0;
+		l.commentno = 0;
 
 		lctp_procline(&l, line);
 		if(l.error != PLE_OK)
@@ -188,15 +194,14 @@ int main(int argc, char *argv[])
 		{
 			if(l.time < stop_time + DAYS(1) || stop_time == -1) // If l.time is LESS than stop_time + 1 full day OR stop_time is not set
 			{
+				char *tmp = basicdate(&l.time);
+				if(tmp == NULL)
+					err("malloc");
 				// If the IN and the OUT are close together, warn.
 				if(last_action == ACTION_OUT && labs(l.time - last_time) / 60 <= 10)
 				{
-					char *tmp = basicdate(&l.time);
-					if(tmp == NULL)
-						err("malloc");
 					if(warnings)
 						printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
-					free(tmp);
 				}
 
 				if(l.action == ACTION_OUT)   // If we are processing an OUT, calculate the time
@@ -204,15 +209,19 @@ int main(int argc, char *argv[])
 					time_t to_add = l.time - last_time; // Amount to add to the total
 					if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
 					{
-						char *tmp = basicdate(&l.time);
-						if(tmp == NULL)
-							err("malloc");
 						if(warnings)
 							printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
-						free(tmp);
 					}
 					total_time += l.time - last_time;
 				}
+
+				// If there is a comment number, and we are supposed to show it, then show it
+				if(l.commentno && comments)
+					if(quiet)
+						printf("comment:%d ", l.commentno);
+					else
+						printf("%s:%d Comment number %d on %s.\n", argv[optind], line_num, l.commentno, tmp);
+				free(tmp);
 			}
 		}
 		line = orig_line; // Restore the pointer, for free() or for getline()
