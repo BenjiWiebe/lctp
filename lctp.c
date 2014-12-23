@@ -165,12 +165,6 @@ int main(int argc, char *argv[])
 		last_action = l.action;
 		last_time = l.time;
 
-		// Zero out 'l'...necessary??
-		l.action = ACTION_NIL;
-		l.error = PLE_OK;
-		l.time = 0;
-		l.commentno = 0;
-
 		lctp_procline(&l, line);
 		if(l.error != PLE_OK)
 			format_error((char*)lctp_procline_strerror(l.error));
