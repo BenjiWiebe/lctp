@@ -11,15 +11,17 @@ int lctp_procline_atol(char *str, int *i, int min, int max)
 	*i = strtol(str, NULL, 10);
 	if(errno != 0)
 	{
-		return errno;
+		return -1;
 	}
 	if((*i > max) || (*i < min))
 	{
-		return ERANGE;
+		errno = ERANGE;
+		return -1;
 	}
+	return 0;
 }
 
-static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline"};
+static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline", "Unknown number-parsing error", "Date or time value out of range"};
 
 const char *lctp_procline_strerror(enum lctp_procline_errors err)
 {
@@ -68,7 +70,11 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lctp_procline_atol(strdt, &t.tm_mon, 1, 12);	// TODO Handle error
+
+// Simple error-handling wrapper for lctp_procline_atol
+#define lpla(a,b,c,d)	if(lctp_procline_atol(a,b,c,d) < 0){i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;}
+
+	lpla(strdt, &t.tm_mon, 1, 12);
 	t.tm_mon--;
 	line += 2;
 	if(line[0] != i->datesep)
@@ -80,7 +86,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lctp_procline_atol(strdt, &t.tm_mday, 1, 31); // TODO Handle error
+	lpla(strdt, &t.tm_mday, 1, 31);
 	line += 2;
 	if(line[0] != i->datesep)
 	{
@@ -91,7 +97,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strncpy(strdt, line, 4);
 	strdt[4] = 0;
 	int tmp = 0;
-	lctp_procline_atol(strdt, &tmp, 1900, 2200); // TODO Handle error
+	lpla(strdt, &tmp, 1900, 2200);
 	t.tm_year = tmp - 1900;
 	line += 4;
 	if(strncmp(line, "  ", 2))
@@ -104,7 +110,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	{
 		strncpy(strdt, line, 4);
 		strdt[4] = 0;
-		lctp_procline_atol(strdt, &i->commentno, 1000, 9999); // TODO Handle error
+		lpla(strdt, &i->commentno, 1000, 9999);
 	}
 	else
 	{
@@ -120,7 +126,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lctp_procline_atol(strdt, &t.tm_hour, 0, 23); // TODO Handle error
+	lpla(strdt, &t.tm_hour, 0, 23);
 	line += 2;
 	if(line[0] != i->timesep)
 	{
@@ -131,7 +137,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lctp_procline_atol(strdt, &t.tm_min, 0, 59); // TODO Handle error
+	lpla(strdt, &t.tm_min, 0, 59);
 	line += 2;
 	if(strcmp(line, "\r\n") && strcmp(line, "\n"))
 	{
