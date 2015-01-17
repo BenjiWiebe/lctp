@@ -3,6 +3,8 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#define LCTP_ATOL_onerror	i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;
+#include "lctp_atol.h"
 #include "lctp_procline.h"
 
 int lctp_procline_atol(char *str, int *i, int min, int max)
@@ -71,10 +73,8 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[1] = line[1];
 	strdt[2] = 0;
 
-// Simple error-handling wrapper for lctp_procline_atol
-#define lpla(a,b,c,d)	if(lctp_procline_atol(a,b,c,d) < 0){i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;}
 
-	lpla(strdt, &t.tm_mon, 1, 12);
+	LCTP_ATOL(strdt, t.tm_mon, 1, 12);
 	t.tm_mon--;
 	line += 2;
 	if(line[0] != i->datesep)
@@ -86,7 +86,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lpla(strdt, &t.tm_mday, 1, 31);
+	LCTP_ATOL(strdt, t.tm_mday, 1, 31);
 	line += 2;
 	if(line[0] != i->datesep)
 	{
@@ -97,7 +97,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strncpy(strdt, line, 4);
 	strdt[4] = 0;
 	int tmp = 0;
-	lpla(strdt, &tmp, 1900, 2200);
+	LCTP_ATOL(strdt, tmp, 1900, 2200);
 	t.tm_year = tmp - 1900;
 	line += 4;
 	if(strncmp(line, "  ", 2))
@@ -110,7 +110,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	{
 		strncpy(strdt, line, 4);
 		strdt[4] = 0;
-		lpla(strdt, &i->commentno, 1000, 9999);
+		LCTP_ATOL(strdt, i->commentno, 1000, 9999);
 	}
 	else
 	{
@@ -126,7 +126,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lpla(strdt, &t.tm_hour, 0, 23);
+	LCTP_ATOL(strdt, t.tm_hour, 0, 23);
 	line += 2;
 	if(line[0] != i->timesep)
 	{
@@ -137,7 +137,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	strdt[0] = line[0];
 	strdt[1] = line[1];
 	strdt[2] = 0;
-	lpla(strdt, &t.tm_min, 0, 59);
+	LCTP_ATOL(strdt, t.tm_min, 0, 59);
 	line += 2;
 	if(strcmp(line, "\r\n") && strcmp(line, "\n"))
 	{

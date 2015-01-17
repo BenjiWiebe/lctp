@@ -1,16 +1,15 @@
 #ifndef __LCTP_ATOL_H__
 #define __LCTP_ATOL_H__
 #include <stdlib.h>
-#ifndef lctp_atol_error_code
-#error	"lctp_atol_error_code must be defined."
+#include <errno.h>
+#ifndef LCTP_ATOL_onerror
+#warning	"LCTP_ATOL_onerror should be defined."
 #endif
-#define lctp_atol(str, min, max) do { \
+#define LCTP_ATOL(str, dst, min, max) do { \
 	errno = 0; \
-	str = strtol(s ## str, NULL, 10); \
+	dst = strtol(str, NULL, 10); \
 	if(errno != 0) \
-		{int RANGE_EXCEEDED=0; lctp_atol_error_code;} \
-	if((str > max) || (str < min)) \
-		{int RANGE_EXCEEDED=1; lctp_atol_error_code;} \
+		{LCTP_ATOL_onerror} \
 	} while(0)
 
 #endif

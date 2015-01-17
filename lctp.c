@@ -11,7 +11,7 @@
 #include "chomp.h"
 #include "datetime.h"
 #include "lctp_procline.h"
-#define lctp_atol_error_code	formaterr(lineno);
+#define LCTP_ATOL_onerror	formaterr(lineno);
 #include "lctp_atol.h"
 //#define LINELEN			30
 //#define check(x)		if(!(x))formaterr(lineno)
