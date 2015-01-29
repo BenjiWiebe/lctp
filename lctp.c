@@ -167,7 +167,17 @@ int main(int argc, char *argv[])
 
 		lctp_procline(&l, line);
 		if(l.error != PLE_OK)
-			format_error((char*)lctp_procline_strerror(l.error));
+		{
+			if(l.error == PLE_UNIXCOMMENT)
+			{
+				line = orig_line;
+				continue;
+			}
+			else
+			{
+				format_error((char*)lctp_procline_strerror(l.error));
+			}
+		}
 
 		// Now it is time to make sure the dates and times make sense
 

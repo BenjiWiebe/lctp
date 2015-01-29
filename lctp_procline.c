@@ -40,6 +40,11 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 		i->error = PLE_ARGS;
 		return -1;
 	}
+	if(line[0] == '#')
+	{
+		i->error = PLE_UNIXCOMMENT;
+		return -1;
+	}
 	size_t linelen = strlen(line);
 	if(linelen != 30 && linelen != 31)
 	{
