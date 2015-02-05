@@ -5,6 +5,7 @@ AC_PREREQ([2.69])
 AC_INIT([lctp], [svn], [itsme@benjwiebe.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_SILENT_RULES([yes])
+AC_CONFIG_SRCDIR([lctp.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
