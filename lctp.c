@@ -10,7 +10,7 @@
 #include <getopt.h>
 #include "chomp.h"
 #include "datetime.h"
-#include "lctp_procline.h"
+#include "lctp.h"
 #define LCTP_ATOL_onerror	formaterr(lineno);
 #include "lctp_atol.h"
 //#define LINELEN			30

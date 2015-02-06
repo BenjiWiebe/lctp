@@ -10,7 +10,8 @@ struct lctp_lineinfo {
 	int commentno;
 	enum lctp_procline_errors error;
 };
-#define LCTP_DATA_LINELEN	31
 const char *lctp_procline_strerror(enum lctp_procline_errors);
 int lctp_procline(struct lctp_lineinfo*, char*);
+time_t parse_date(char *str, char sep);
+time_t parse_datetime(char *str, char dsep, char tsep);
 #endif

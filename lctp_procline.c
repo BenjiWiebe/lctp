@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #define LCTP_ATOL_onerror	i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;
 #include "lctp_atol.h"
-#include "lctp_procline.h"
+#include "lctp.h"
 
 int lctp_procline_atol(char *str, int *i, int min, int max)
 {
