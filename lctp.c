@@ -95,7 +95,8 @@ int main(int argc, char *argv[])
 				usage(argv[0], 0);
 				break;
 			case 'v':
-				apperr("Not implemented.\n");
+				printf("%s\n", PACKAGE_STRING);
+				exit(EXIT_SUCCESS);
 				break;
 		}
 	}
