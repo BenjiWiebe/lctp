@@ -3,6 +3,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #define LCTP_ATOL_onerror	i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;
 #include "lctp_atol.h"
 #include "lctp.h"
@@ -23,11 +24,127 @@ int lctp_procline_atol(char *str, int *i, int min, int max)
 	return 0;
 }
 
-static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline", "Unknown number-parsing error", "Date or time value out of range"};
+static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline", "Unknown number-parsing error", "Date or time value out of range", "Unknown error"};
 
 const char *lctp_procline_strerror(enum lctp_procline_errors err)
 {
 	return ple_strs[err];
+}
+
+struct text_data_entry {
+	char *line; // The original pointer to the line
+	char *io; // "IN" or "OUT"
+	char *month; // the month
+	char *day; // the day
+	char *year; // the year
+	char *hour; // the hour (24-hour)
+	char *minute; // the minute
+	char *comment; // the comment
+};
+
+struct data_entry {
+	enum actions action;
+	uint8_t month;
+	uint8_t day;
+	uint16_t year;
+	uint8_t hour;
+	uint8_t minute;
+	uint16_t comment;
+};
+
+// Convert a line to a struct text_data_entry
+// Returns 0 on success, and an lctp_procline_errors member on error
+static int mktextdata(struct text_data_entry *e, char *line)
+{
+	if(e == NULL || line == NULL)
+		return PLE_UNKNOWN;
+
+	// Save the original pointer, in case we need to free() it or something
+	e->line = line;
+
+	// Save the action (IN or OUT) and NULL-terminate it. Uses 4 bytes of 'line' ("OUT\0" or "IN\0\0")
+	e->io = line;
+	if(e->io[2] == ' ')
+		e->io[2] = 0;
+	else
+		e->io[3] = 0;
+	line += 4;
+
+	line += 2;
+
+	e->month = line;
+	e->month[2] = 0;
+	line += 3;
+
+	e->day = line;
+	e->day[2] = 0;
+	line += 3;
+
+	e->year = line;
+	e->year[4] = 0;
+	line += 5;
+
+	line += 1;
+
+	e->comment = line;
+	e->comment[4] = 0;
+	line += 5;
+
+	line += 1;
+
+	e->hour = line;
+	e->hour[2] = 0;
+	line += 3;
+
+	e->minute = line;
+	e->minute[2] = 0;
+
+	return 0;
+}
+
+// Checks a line's syntax (not values of numbers or anything)
+// Returns 0 on success, and an lctp_procline_errors member on error
+static enum lctp_procline_errors validate(char *line)
+{
+}
+
+// Checks a struct data_entry's data for out-of-range values, etc
+// Returns 0 on success, and an lctp_procline_errors member on error
+static enum lctp_procline_errors logic_check(struct text_data_entry *e)
+{
+}
+
+// Converts a struct text_data_entry to a struct data_entry
+static enum lctp_procline_errors convert(struct text_data_entry *e)
+{
+}
+
+// Gets a human-readable status message (statically allocated)
+char *lctp_getstatus(char *line)
+{
+	/*
+Last action: OUT @ 12:30 PM 09/31
+Last action: OUT @ 12:30 PM Wednesday, September 31
+	 */
+	struct text_data_entry e;
+	mktextdata(&e, line);
+	static char st[52];
+	st[0] = 0;
+	uint8_t normhour = (e.hour[0] - '0') * 10 + e.hour[1] - '0';
+	char ampm = 'A';
+	if(normhour > 12)
+	{
+		normhour -= 12;
+		ampm = 'P';
+	}
+	snprintf(st, 50, "Last action: %s @ %02d:%s %cM %s/%s", 
+			e.io,
+			normhour,
+			e.minute,
+			ampm,
+			e.month,
+			e.day);
+	return st;
 }
 
 int lctp_procline(struct lctp_lineinfo *i, char *line)
