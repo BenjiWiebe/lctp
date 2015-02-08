@@ -9,5 +9,5 @@ lctp_SOURCES = lctp.c
 lctp_LDADD = liblctp.a
 lctp_helper_SOURCES = lctp_helper.c
 lctp_helper_LDADD = liblctp.a
-liblctp_a_SOURCES = datetime.c datetime.h lctp_procline.c chomp.c chomp.h lctp.h lctp_atol.h
+liblctp_a_SOURCES = liblctp.c datetime.c datetime.h chomp.c chomp.h lctp.h lctp_atol.h
 EXTRA_DIST = m4/gnulib-cache.m4
