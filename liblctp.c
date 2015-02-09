@@ -4,9 +4,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#define LCTP_ATOL_onerror	i->error = errno == ERANGE ? PLE_RANGE : PLE_CONVERR; return -1;
-#include "lctp_atol.h"
+#include <ctype.h>
 #include "lctp.h"
+
+#define DAT_LINE_LEN	31
+#define DAT_DATE_SEP	'/'
+#define DAT_TIME_SEP	':'
 
 int lctp_procline_atol(char *str, int *i, int min, int max)
 {
@@ -24,110 +27,138 @@ int lctp_procline_atol(char *str, int *i, int min, int max)
 	return 0;
 }
 
+enum lctp_procline_errors { PLE_OK = 0, PLE_LEN, PLE_ARGS, PLE_IO, PLE_TIMESEP, PLE_DATESEP, PLE_SPACES, PLE_NEWLINE, PLE_CONVERR, PLE_RANGE, PLE_UNKNOWN }; 
+
 static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline", "Unknown number-parsing error", "Date or time value out of range", "Unknown error"};
 
-const char *lctp_procline_strerror(enum lctp_procline_errors err)
-{
-	return ple_strs[err];
-}
-
-struct text_data_entry {
-	char *line; // The original pointer to the line
-	char *io; // "IN" or "OUT"
-	char *month; // the month
-	char *day; // the day
-	char *year; // the year
-	char *hour; // the hour (24-hour)
-	char *minute; // the minute
-	char *comment; // the comment
-};
-
 struct data_entry {
-	enum actions action;
-	uint8_t month;
-	uint8_t day;
-	uint16_t year;
-	uint8_t hour;
-	uint8_t minute;
-	uint16_t comment;
+	enum actions action; // ACTION_IN or ACTION_OUT
+	uint8_t month; // 0-11
+	uint8_t day; // 1-31
+	uint16_t year; // years since 1900
+	uint8_t hour; // 0-23
+	uint8_t minute; // 0-59
+	uint16_t comment; // 1000-9999
+	uint8_t is_comment; // 0/1 (line is/not a comment)
 };
 
-// Convert a line to a struct text_data_entry
+#define convert2(str, var)	if(!isdigit(str[0]) || !isdigit(str[1])) \
+	return PLE_CONVERR; \
+	var = (str[0] - '0') * 10 + str[1] - '0';
+
+#define convert4(str, var)	if(!isdigit(str[0]) || !isdigit(str[1]) || !isdigit(str[2]) || !isdigit(str[3])) \
+	return PLE_CONVERR; \
+	var = ((int)str[0] - '0') * 1000 + ((int)str[1] - '0') * 100 + ((int)str[2] - '0') * 10 + (int)str[3] - '0';
+
+// Checks a line's syntax and creates a struct data_entry from it
+// Also checks to make sure that numbers are in range
 // Returns 0 on success, and an lctp_procline_errors member on error
-static int mktextdata(struct text_data_entry *e, char *line)
+static enum lctp_procline_errors mk_data_entry(char *line, struct data_entry *ret)
 {
-	if(e == NULL || line == NULL)
-		return PLE_UNKNOWN;
+	if(line == NULL || ret == NULL)
+		return PLE_ARGS;
 
-	// Save the original pointer, in case we need to free() it or something
-	e->line = line;
+	if(line[0] == '#')
+	{
+		ret->is_comment = 1;
+		return PLE_OK;
+	}
 
-	// Save the action (IN or OUT) and NULL-terminate it. Uses 4 bytes of 'line' ("OUT\0" or "IN\0\0")
-	e->io = line;
-	if(e->io[2] == ' ')
-		e->io[2] = 0;
+	if(!strncmp(line, "IN ", 3))
+		ret->action = ACTION_IN;
+	else if(!strncmp(line, "OUT", 3))
+		ret->action = ACTION_OUT;
 	else
-		e->io[3] = 0;
-	line += 4;
+		return PLE_IO;
+	line += 3;
 
+	if(strncmp(line, "   ", 3))
+		return PLE_SPACES;
+	line += 3;
+
+	convert2(line, ret->month);
+	ret->month -= 1;
 	line += 2;
 
-	e->month = line;
-	e->month[2] = 0;
-	line += 3;
-
-	e->day = line;
-	e->day[2] = 0;
-	line += 3;
-
-	e->year = line;
-	e->year[4] = 0;
-	line += 5;
-
+	if(line[0] != DAT_DATE_SEP)
+		return PLE_DATESEP;
 	line += 1;
 
-	e->comment = line;
-	e->comment[4] = 0;
-	line += 5;
+	convert2(line, ret->day);
+	line += 2;
 
+	if(line[0] != DAT_DATE_SEP)
+		return PLE_DATESEP;
 	line += 1;
 
-	e->hour = line;
-	e->hour[2] = 0;
-	line += 3;
+	convert4(line, ret->year);
+	ret->year -= 1900;
+	line += 4;
 
-	e->minute = line;
-	e->minute[2] = 0;
+	if(strncmp(line, "  ", 2))
+		return PLE_SPACES;
+	line += 2;
 
+	int has_comment = 0;
+	if(strncmp(line, "    ", 4))
+	{
+		has_comment = 1;
+		convert4(line, ret->comment);
+	}
+	line += 4;
+
+	if(strncmp(line, "  ", 2))
+		return PLE_SPACES;
+	line += 2;
+
+	convert2(line, ret->hour);
+	line += 2;
+
+	if(line[0] != DAT_TIME_SEP)
+		return PLE_TIMESEP;
+	line += 1;
+
+	convert2(line, ret->minute);
+	line += 2;
+
+	if(line[0] == '\r')
+	{
+		line += 1;
+		if(line[0] != '\n')
+			return PLE_NEWLINE;
+	}
+	else if(line[0] == '\n')
+	{
+		line += 1;
+	}
+	else
+	{
+		return PLE_NEWLINE;
+	}
+
+	if(line[0] != 0)
+		return PLE_LEN;
+
+	// All values are unsigned int's; no need to check for < 0
+	if(ret->year + 1900 > 3000 ||
+			ret->month > 11 ||
+			ret->day < 1 || ret->day > 31 ||
+			ret->hour > 23 ||
+			ret->minute > 59 ||
+			(has_comment && (ret->comment < 1000 || ret->comment > 9999)))
+		return PLE_RANGE;
 	return 0;
 }
 
-// Checks a line's syntax (not values of numbers or anything)
-// Returns 0 on success, and an lctp_procline_errors member on error
-static enum lctp_procline_errors validate(char *line)
-{
-}
-
-// Checks a struct data_entry's data for out-of-range values, etc
-// Returns 0 on success, and an lctp_procline_errors member on error
-static enum lctp_procline_errors logic_check(struct text_data_entry *e)
-{
-}
-
-// Converts a struct text_data_entry to a struct data_entry
-static enum lctp_procline_errors convert(struct text_data_entry *e)
-{
-}
-
 // Gets a human-readable status message (statically allocated)
-char *lctp_getstatus(char *line)
+/*char *lctp_getstatus(char *line)
 {
-	/*
+	*
 Last action: OUT @ 12:30 PM 09/31
 Last action: OUT @ 12:30 PM Wednesday, September 31
-	 */
+	 *
 	struct text_data_entry e;
-	mktextdata(&e, line);
+	//mktextdata(&e, line);
 	static char st[52];
 	st[0] = 0;
 	uint8_t normhour = (e.hour[0] - '0') * 10 + e.hour[1] - '0';
@@ -145,128 +176,34 @@ Last action: OUT @ 12:30 PM Wednesday, September 31
 			e.month,
 			e.day);
 	return st;
-}
+}*/
 
 int lctp_procline(struct lctp_lineinfo *i, char *line)
 {
-	if(i == NULL)
+	enum lctp_procline_errors err;
+	struct data_entry ent = {0};
+	err = mk_data_entry(line, &ent);
+	i->error_message = ple_strs[err];
+	if(err != PLE_OK)
 		return -1;
-
-	if(line == NULL || i->timesep == 0 || i->datesep == 0)
+	if(ent.is_comment)
 	{
-		i->error = PLE_ARGS;
-		return -1;
-	}
-	if(line[0] == '#')
-	{
-		i->error = PLE_UNIXCOMMENT;
-		return -1;
-	}
-	size_t linelen = strlen(line);
-	if(linelen != 30 && linelen != 31)
-	{
-		i->error = PLE_LEN;
-		return -1;
-	}
-	char strio[4];
-	strncpy(strio, line, 3);
-	strio[3] = 0;
-	if(!strncmp(line, "IN    ", 6))
-	{
-		i->action = ACTION_IN;
-	}
-	else if(!strncmp(line, "OUT   ", 6))
-	{
-		i->action = ACTION_OUT;
+		i->is_comment = 1;
+		return 0;
 	}
 	else
 	{
-		i->error = PLE_IO;
-		return -1;
+		i->is_comment = 0;
 	}
-
-	line += 6;
-
+	i->action = ent.action;
+	i->commentno = ent.comment;
 	struct tm t = {0};
 	t.tm_isdst = -1;
-
-	char strdt[5];
-	strdt[0] = line[0];
-	strdt[1] = line[1];
-	strdt[2] = 0;
-
-
-	LCTP_ATOL(strdt, t.tm_mon, 1, 12);
-	t.tm_mon--;
-	line += 2;
-	if(line[0] != i->datesep)
-	{
-		i->error = PLE_DATESEP;
-		return -1;
-	}
-	line++;
-	strdt[0] = line[0];
-	strdt[1] = line[1];
-	strdt[2] = 0;
-	LCTP_ATOL(strdt, t.tm_mday, 1, 31);
-	line += 2;
-	if(line[0] != i->datesep)
-	{
-		i->error = PLE_DATESEP;
-		return -1;
-	}
-	line++;
-	strncpy(strdt, line, 4);
-	strdt[4] = 0;
-	int tmp = 0;
-	LCTP_ATOL(strdt, tmp, 1900, 2200);
-	t.tm_year = tmp - 1900;
-	line += 4;
-	if(strncmp(line, "  ", 2))
-	{
-		i->error = PLE_SPACES;
-		return -1;
-	}
-	line += 2;
-	if(strncmp(line, "    ", 4))
-	{
-		strncpy(strdt, line, 4);
-		strdt[4] = 0;
-		LCTP_ATOL(strdt, i->commentno, 1000, 9999);
-	}
-	else
-	{
-		i->commentno = 0;
-	}
-	line += 4;
-	if(strncmp(line, "  ", 2))
-	{
-		i->error = PLE_SPACES;
-		return -1;
-	}
-	line += 2;
-	strdt[0] = line[0];
-	strdt[1] = line[1];
-	strdt[2] = 0;
-	LCTP_ATOL(strdt, t.tm_hour, 0, 23);
-	line += 2;
-	if(line[0] != i->timesep)
-	{
-		i->error = PLE_TIMESEP;
-		return -1;
-	}
-	line += 1;
-	strdt[0] = line[0];
-	strdt[1] = line[1];
-	strdt[2] = 0;
-	LCTP_ATOL(strdt, t.tm_min, 0, 59);
-	line += 2;
-	if(strcmp(line, "\r\n") && strcmp(line, "\n"))
-	{
-		i->error = PLE_NEWLINE;		
-		return -1;
-	}
-	i->error = PLE_OK;
+	t.tm_min = ent.minute;
+	t.tm_hour = ent.hour;
+	t.tm_mday = ent.day;
+	t.tm_mon = ent.month;
+	t.tm_year = ent.year;
 	i->time = mktime(&t);
-	return PLE_OK;
+	return 0;
 }

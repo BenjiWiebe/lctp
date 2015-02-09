@@ -150,8 +150,6 @@ int main(int argc, char *argv[])
 	time_t total_time = 0, last_time = 0, now_time = time(NULL);
 	enum actions last_action = ACTION_NIL;
 	struct lctp_lineinfo l = {0};
-	l.timesep = ':';
-	l.datesep = '/';
 
 	while(getline(&line, &len, fp) != -1)
 	{
@@ -166,18 +164,13 @@ int main(int argc, char *argv[])
 		last_action = l.action;
 		last_time = l.time;
 
-		lctp_procline(&l, line);
-		if(l.error != PLE_OK)
+		if(lctp_procline(&l, line) < 0)
+			format_error((char*)l.error_message);
+
+		if(l.is_comment)
 		{
-			if(l.error == PLE_UNIXCOMMENT)
-			{
-				line = orig_line;
-				continue;
-			}
-			else
-			{
-				format_error((char*)lctp_procline_strerror(l.error));
-			}
+			line = orig_line;
+			continue;
 		}
 
 		// Now it is time to make sure the dates and times make sense
