@@ -151,32 +151,31 @@ static enum lctp_procline_errors mk_data_entry(char *line, struct data_entry *re
 }
 
 // Gets a human-readable status message (statically allocated)
-/*char *lctp_getstatus(char *line)
+char *lctp_getstatus(char *line)
 {
-	*
+	/*
 Last action: OUT @ 12:30 PM 09/31
 Last action: OUT @ 12:30 PM Wednesday, September 31
-	 *
-	struct text_data_entry e;
-	//mktextdata(&e, line);
+	 */
+	struct data_entry e;
+	mk_data_entry(line, &e);
 	static char st[52];
 	st[0] = 0;
-	uint8_t normhour = (e.hour[0] - '0') * 10 + e.hour[1] - '0';
 	char ampm = 'A';
-	if(normhour > 12)
+	if(e.hour > 12)
 	{
-		normhour -= 12;
+		e.hour -= 12;
 		ampm = 'P';
 	}
-	snprintf(st, 50, "Last action: %s @ %02d:%s %cM %s/%s", 
-			e.io,
-			normhour,
+	snprintf(st, 50, "Last action: %s @ %02d:%02d %cM %02d/%02d", 
+			e.action == ACTION_IN ? "IN" : "OUT",
+			e.hour,
 			e.minute,
 			ampm,
-			e.month,
+			e.month + 1, /* We have to do this, because struct data_entry copies all of struct tm's eccentricities */
 			e.day);
 	return st;
-}*/
+}
 
 int lctp_procline(struct lctp_lineinfo *i, char *line)
 {
