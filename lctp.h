@@ -1,6 +1,7 @@
 #ifndef __LCTP_PROCLINE_H__
 #define __LCTP_PROCLINE_H__
 #include <time.h>
+#define LCTP_DATA_LINE_LEN	31
 enum actions { ACTION_NIL = 0, ACTION_IN, ACTION_OUT };
 struct lctp_lineinfo {
 	time_t time;
