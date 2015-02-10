@@ -23,8 +23,10 @@ int main(int argc, char *argv[])
 	bdt->tm_sec = 0;
 	bdt->tm_min = 0;
 	bdt->tm_hour = 0;
-	time_t ttoday = timelocal(bdt);
+	bdt->tm_isdst = -1;
+	time_t ttoday = mktime(bdt);
 	struct tm *today = localtime(&ttoday);
+	today->tm_isdst = -1;
 	int days_ago = 0;
 	while(today->tm_wday != 4)
 	{
@@ -39,7 +41,7 @@ int main(int argc, char *argv[])
 	char *begin_arg = malloc(11), *end_arg = malloc(11), *command = malloc(39+filename_len);
 	if(!(begin_arg && end_arg))
 		fatalerror("malloc");
-	time_t end = timelocal(today) - days_ago * 24 * 60 * 60;
+	time_t end = mktime(today) - days_ago * 24 * 60 * 60;
 	time_t begin = end - (6 * 24 * 60 * 60); //FIXME (in lctp) Use 6 instead of 7 since lctp is INCLUSIVE with the end date
 	strftime(begin_arg, 11, "%m-%d-%Y", localtime(&begin));
 	strftime(end_arg, 11, "%m-%d-%Y", localtime(&end));
