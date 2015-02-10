@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 		err("fopen");
 	}
 
-	char *line = NULL, *orig_line = NULL;
+	char *line = NULL;
 	int comment_number = 0, line_num = 0;
 	size_t len = 0;
 	time_t total_time = 0, last_time = 0, now_time = time(NULL);
@@ -157,9 +157,6 @@ int main(int argc, char *argv[])
 		// Increment the line number
 		line_num++;
 
-		// Save the unmodified pointer from getline() for passing to free()
-		orig_line = line;
-
 		// Put stuff from the last line into last_*
 		last_action = l.action;
 		last_time = l.time;
@@ -168,10 +165,7 @@ int main(int argc, char *argv[])
 			format_error((char*)l.error_message);
 
 		if(l.is_comment)
-		{
-			line = orig_line;
 			continue;
-		}
 
 		// Now it is time to make sure the dates and times make sense
 
@@ -222,7 +216,6 @@ int main(int argc, char *argv[])
 				free(tmp);
 			}
 		}
-		line = orig_line; // Restore the pointer, for free() or for getline()
 	}
 	free(line);
 	fclose(fp);
