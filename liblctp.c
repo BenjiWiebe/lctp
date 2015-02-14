@@ -181,7 +181,7 @@ int lctp_procline(struct lctp_lineinfo *i, char *line)
 	struct data_entry ent = {0};
 	err = mk_data_entry(line, &ent);
 	i->error_message = ple_strs[err];
-	if(err != PLE_OK)
+	if(err != PLE_OK && err != PLE_NEWLINE)
 		return -1;
 	if(ent.is_comment)
 	{
