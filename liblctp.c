@@ -27,8 +27,6 @@ int lctp_procline_atol(char *str, int *i, int min, int max)
 	return 0;
 }
 
-enum lctp_procline_errors { PLE_OK = 0, PLE_LEN, PLE_ARGS, PLE_IO, PLE_TIMESEP, PLE_DATESEP, PLE_SPACES, PLE_NEWLINE, PLE_CONVERR, PLE_RANGE, PLE_UNKNOWN }; 
-
 static const char *ple_strs[] = {"Success", "Line length invalid", "Invalid argument", "Wrong value for IN/OUT field", "Invalid time separator", "Invalid date separator", "Invalid number of spaces", "Missing trailing newline", "Unknown number-parsing error", "Date or time value out of range", "Unknown error"};
 
 struct data_entry {

@@ -3,6 +3,7 @@
 #include <time.h>
 #define LCTP_DATA_LINE_LEN	31
 enum actions { ACTION_NIL = 0, ACTION_IN, ACTION_OUT };
+enum lctp_procline_errors { PLE_OK = 0, PLE_LEN, PLE_ARGS, PLE_IO, PLE_TIMESEP, PLE_DATESEP, PLE_SPACES, PLE_NEWLINE, PLE_CONVERR, PLE_RANGE, PLE_UNKNOWN }; 
 struct lctp_lineinfo {
 	time_t time;
 	enum actions action;
