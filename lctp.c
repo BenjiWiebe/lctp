@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	}
 
 	char *line = NULL;
-	int comment_number = 0, line_num = 0;
+	int line_num = 0;
 	size_t len = 0;
 	time_t total_time = 0, last_time = 0, now_time = time(NULL);
 	enum actions last_action = ACTION_NIL;
@@ -209,10 +209,12 @@ int main(int argc, char *argv[])
 
 				// If there is a comment number, and we are supposed to show it, then show it
 				if(l.commentno && comments)
+				{
 					if(quiet)
 						printf("comment:%d ", l.commentno);
 					else
 						printf("%s:%d Comment number %d on %s.\n", argv[optind], line_num, l.commentno, tmp);
+				}
 				free(tmp);
 			}
 		}
