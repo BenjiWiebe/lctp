@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([lctp], [svn], [itsme@benjwiebe.com])
+AC_INIT([lctp], [dev], [itsme@benjwiebe.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 AC_CONFIG_MACRO_DIR([m4])
