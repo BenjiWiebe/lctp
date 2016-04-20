@@ -10,10 +10,13 @@ AC_CONFIG_SRCDIR([lctp.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
+PKG_PROG_PKG_CONFIG
+m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], AC_SUBST([pkgconfigdir], ${libdir}/pkgconfig))
 AC_PROG_CC
 gl_EARLY
 AC_PROG_CC_STDC
 AM_PROG_AR
+LT_INIT([disable-shared])
 gl_INIT
 
 # Checks for libraries.
@@ -29,5 +32,5 @@ AC_FUNC_MALLOC
 AC_FUNC_MKTIME
 AC_CHECK_FUNCS([memset strtol])
 
-AC_CONFIG_FILES([Makefile lib/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile lib/Makefile tests/Makefile lctp.pc])
 AC_OUTPUT
