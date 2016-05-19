@@ -13,8 +13,8 @@ AC_CONFIG_HEADERS([config.h])
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], AC_SUBST([pkgconfigdir], ${libdir}/pkgconfig))
 AC_PROG_CC
-gl_EARLY
 AC_PROG_CC_STDC
+gl_EARLY
 AM_PROG_AR
 LT_INIT([disable-shared])
 gl_INIT
