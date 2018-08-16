@@ -15,7 +15,9 @@
 #include "lctp_atol.h"
 //#define LINELEN			30
 //#define check(x)		if(!(x))formaterr(lineno)
-#define format_error(x)	_format_error(x, argv[optind], line_num, __LINE__)
+#define format_error(x)	_format_error(x, argv[optind], line_num, __LINE__, true)
+#define format_warning(x) _format_error(x, argv[optind], line_num, __LINE__, false)
+#define apperr(...)	do{apperr_noexit(__VA_ARGS__);exit(1);}while(0)
 
 void usage(char *progname, int ret)
 {
@@ -31,13 +33,12 @@ void usage(char *progname, int ret)
 	exit(ret);
 }
 
-void apperr(char *fmt, ...)
+void apperr_noexit(char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
 	va_end(l);
-	exit(1);
 }
 
 void err(char *msg)
@@ -46,9 +47,11 @@ void err(char *msg)
 	exit(1);
 }
 
-void _format_error(char *message, char *file, int lineno, int sourceline)
+void _format_error(char *message, char *file, int lineno, int sourceline, bool iserror)
 {
-	apperr("%s:%d: Format error: %s (%d)\n", file, lineno, message, sourceline);
+	apperr_noexit("%s:%d: Format %s: %s (%d)\n", file, lineno, iserror ? "error" : "warning", message, sourceline);
+	if(iserror)
+		exit(1);
 }
 
 int main(int argc, char *argv[])
@@ -171,7 +174,7 @@ int main(int argc, char *argv[])
 
 		// Check whether the current and last action are the same
 		if(l.action == last_action)
-			format_error("The last line was of the same type as this one.");
+			format_warning("The last line was of the same type as this one.");
 	
 
 		// Make sure the entries come after each other, time-wise.
