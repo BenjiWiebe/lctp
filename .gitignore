@@ -20,3 +20,11 @@ m4/lt~obsolete.m4
 missing
 test-driver
 tests/Makefile.in
+tests/*.log
+tests/*.trs
+*.o
+config.cache
+config.log
+config.status
+config.h
+*.a
