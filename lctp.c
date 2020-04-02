@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <getopt.h>
-#include "chomp.h"
 #include "datetime.h"
 #include "lctp.h"
 #define LCTP_ATOL_onerror	formaterr(lineno);
@@ -187,7 +186,6 @@ int main(int argc, char *argv[])
 
 		// End-date is inclusive.
 		// We need to compare with end-date plus a full day, exclusive, right?
-		// If 
 		if(l.time > stop_time + DAYS(1) && stop_time != -1) // If l.time is LESS than stop_time + 1 full day OR stop_time is not set
 			continue;
 
