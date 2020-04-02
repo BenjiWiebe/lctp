@@ -104,36 +104,34 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(!sstart != !send)
-	{
-		if(sstart)
-		{
-			apperr("End-date is also needed.\n");
-		}
-		if(send)
-		{
-			apperr("Start-date is also needed.\n");
-		}
-		usage(argv[0], 1);
-	}
-
 	time_t start_time, stop_time;
 
 	if(sstart)
 	{
 		start_time = parse_date(sstart, '-');
-		stop_time = parse_date(send, '-');
 
-		if(start_time == FMT_ERR || stop_time == FMT_ERR)
-			apperr("Start-date and end-date must be in the format mm-dd-yyyy.\n");
-
-		if(start_time > stop_time)
-			apperr("End date must be larger than or equal to the start date.");
+		if(start_time == FMT_ERR)
+			apperr("Start time must be in format mm-dd-yyyy.\n");
 	}
 	else
 	{
 		start_time = -1;
+	}
+
+	if(send)
+	{
+		stop_time = parse_date(send, '-');
+		if(stop_time == FMT_ERR)
+			apperr("End date must be in format mm-dd-yyyy.\n");
+	}
+	else
+	{
 		stop_time = -1;
+	}
+
+	if((start_time != -1 && stop_time != -1) && start_time > stop_time) // If start and end dates are being used, make sure start comes before end chronologically
+	{
+		apperr("End date must be larger than or equal to the start date.\n");
 	}
 
 	if(optind != (argc - 1))
@@ -175,7 +173,6 @@ int main(int argc, char *argv[])
 		// Check whether the current and last action are the same
 		if(l.action == last_action)
 			format_warning("The last line was of the same type as this one.");
-	
 
 		// Make sure the entries come after each other, time-wise.
 		if(l.time < last_time)
@@ -185,42 +182,45 @@ int main(int argc, char *argv[])
 		if(l.time > now_time)
 			format_error("This line's date and time are in the future.");
 
-		if(l.time >= start_time || start_time == -1) // If this entry falls between start_time and stop_time, OR start_time is not set
+		if(l.time < start_time) // Don't tally up this line if it comes before start_time. Do include it if it IS start_time.
+			continue;
+
+		// End-date is inclusive.
+		// We need to compare with end-date plus a full day, exclusive, right?
+		// If 
+		if(l.time > stop_time + DAYS(1) && stop_time != -1) // If l.time is LESS than stop_time + 1 full day OR stop_time is not set
+			continue;
+
+		char *tmp = basicdate(&l.time);
+		if(tmp == NULL)
+			err("malloc");
+		// If the IN and the OUT are close together, warn.
+		if(last_action == ACTION_OUT && labs(l.time - last_time) / 60 <= 10)
 		{
-			if(l.time < stop_time + DAYS(1) || stop_time == -1) // If l.time is LESS than stop_time + 1 full day OR stop_time is not set
-			{
-				char *tmp = basicdate(&l.time);
-				if(tmp == NULL)
-					err("malloc");
-				// If the IN and the OUT are close together, warn.
-				if(last_action == ACTION_OUT && labs(l.time - last_time) / 60 <= 10)
-				{
-					if(warnings)
-						printf("%s:%d ***WARNING*** Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
-				}
-
-				if(l.action == ACTION_OUT)   // If we are processing an OUT, calculate the time
-				{
-					time_t to_add = l.time - last_time; // Amount to add to the total
-					if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
-					{
-						if(warnings)
-							printf("%s:%d: ***WARNING*** Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
-					}
-					total_time += l.time - last_time;
-				}
-
-				// If there is a comment number, and we are supposed to show it, then show it
-				if(l.commentno && comments)
-				{
-					if(quiet)
-						printf("comment:%d ", l.commentno);
-					else
-						printf("%s:%d Comment number %d on %s.\n", argv[optind], line_num, l.commentno, tmp);
-				}
-				free(tmp);
-			}
+			if(warnings)
+				printf("%s:%d WARNING: Difference between IN and OUT time is too small (%ld minutes) on %s.\n", argv[optind], line_num, labs(l.time - last_time) / 60, tmp);
 		}
+
+		if(l.action == ACTION_OUT)   // If we are processing an OUT, calculate the time
+		{
+			time_t to_add = l.time - last_time; // Amount to add to the total
+			if(to_add > HOURS(12)) // If amount to add is greater than 12 hours, warn.
+			{
+				if(warnings)
+					printf("%s:%d: WARNING: Employee clocked in for more than 12 hours (%.2f hours) on %s.\n", argv[optind], line_num, (double)to_add / 60 / 60, tmp);
+			}
+			total_time += l.time - last_time;
+		}
+
+		// If there is a comment number, and we are supposed to show it, then show it
+		if(l.commentno && comments)
+		{
+			if(quiet)
+				printf("comment:%d ", l.commentno);
+			else
+				printf("%s:%d Comment number %d on %s.\n", argv[optind], line_num, l.commentno, tmp);
+		}
+		free(tmp);
 	}
 	free(line);
 	fclose(fp);
